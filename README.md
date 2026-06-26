@@ -131,7 +131,7 @@ convention.
   Polaris recommended).
 - **Portable compute** — the same bare-name SQL runs on all three engines.
 
-## Roadmap — rasters and Earth Observation
+## Roadmap: rasters and Earth Observation
 
 v1 covers **vector** mobility (trajectories). Next, a **raster** table family
 joins the same lakehouse:

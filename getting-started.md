@@ -81,7 +81,7 @@ lake/
 
 Partitions may be nested, e.g. `year=2026/month=02/h3cell=832830fffffffff/`.
 
-## 4. Read the same data — pruned by space and time
+## 4. Read the same data: pruned by space and time
 
 ```sql
 SELECT entity_id, asText(tgeompointFromBinary(traj))

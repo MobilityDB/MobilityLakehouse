@@ -12,7 +12,7 @@ cells = []
 def md(t): cells.append(nbf.v4.new_markdown_cell(t))
 def code(t): cells.append(nbf.v4.new_code_cell(t))
 
-md("""# Querying the lake — temporal analytics on AIS trajectories
+md("""# Querying the lake: temporal analytics on AIS trajectories
 
 The [quickstart](./mobility-lakehouse-quickstart.ipynb) wrote a TemporalParquet
 lake and pruned it. This notebook shows **what temporal types give you that plain
@@ -82,7 +82,7 @@ SELECT mmsi,
 FROM t ORDER BY mmsi
 \"\"\")""")
 
-md("""## 2. Time travel — where was each vessel at 09:00?
+md("""## 2. Time travel: where was each vessel at 09:00?
 
 `valueAtTimestamp` evaluates the trajectory function at any instant — interpolating
 between pings. This is *within-trajectory* time travel (distinct from Iceberg
@@ -110,7 +110,7 @@ SELECT mmsi,
 FROM t ORDER BY mmsi
 \"\"\")""")
 
-md("""## 4. Spatiotemporal query — who was in the box during the window?
+md("""## 4. Spatiotemporal query: who was in the box during the window?
 
 The lakehouse-native filter: the covering columns prune by bounding box and time
 before any trajectory is decoded, then a temporal predicate confirms the slice is

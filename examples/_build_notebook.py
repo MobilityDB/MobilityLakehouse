@@ -12,7 +12,7 @@ cells = []
 def md(t): cells.append(nbf.v4.new_markdown_cell(t))
 def code(t): cells.append(nbf.v4.new_code_cell(t))
 
-md("""# Build a Mobility Lakehouse — AIS trajectories on Iceberg
+md("""# Build a Mobility Lakehouse: AIS trajectories on Iceberg
 
 This notebook builds a small **mobility lakehouse** end to end with **MobilityDuck**,
 the DuckDB extension behind the live
@@ -108,7 +108,7 @@ keeps full precision; only the text rendering of a trajectory is rounded):""")
 code("""duck(\"\"\"SELECT mmsi, xmin, xmax, ymin, ymax, srid FROM read_parquet('ais_shard.parquet')
          ORDER BY mmsi\"\"\")""")
 
-md("""## 3. Query it — pruned by space and time
+md("""## 3. Query it: pruned by space and time
 
 A bounding-box-and-time predicate is a scalar AND-chain over the covering columns.
 The engine evaluates it against column statistics and skips non-intersecting files
