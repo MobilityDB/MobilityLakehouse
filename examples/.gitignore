@@ -1,6 +1,6 @@
-# Generated when running the notebook
-mobility_lakehouse.duckdb
-ais_shard.parquet
+# Generated when running the notebooks
+*.duckdb
+*.parquet
 lake/
 __pycache__/
 .ipynb_checkpoints/
