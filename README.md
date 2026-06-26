@@ -65,6 +65,10 @@ portable bare-name SQL   ── one query, three engines
 
 ## Try it
 
+▶ **Runnable notebook:** [`examples/mobility-lakehouse-quickstart.ipynb`](./examples/mobility-lakehouse-quickstart.ipynb)
+builds this end to end on MobilityDuck — ingest, write, prune, round-trip, Iceberg —
+and renders its executed outputs on GitHub.
+
 Build a small lakehouse with MobilityDuck (DuckDB). The same files are read by
 MobilityDB and MobilitySpark.
 
