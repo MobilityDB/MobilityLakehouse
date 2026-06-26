@@ -156,3 +156,4 @@ they move through are first-class and queried together.
 - **MobilitySpark** — the Spark integration — <https://github.com/MobilityDB/MobilitySpark>
 - **Format specification** — [TemporalParquet](https://github.com/MobilityDB/MobilityLakehouse/blob/main/spec/temporalparquet.md) · [covering columns](https://github.com/MobilityDB/MobilityLakehouse/blob/main/spec/covering-columns.md)
 - **Getting started** — the [end-to-end walkthrough](https://github.com/MobilityDB/MobilityLakehouse/blob/main/getting-started.md)
+- **Roadmap** — the [ecosystem plan](https://github.com/MobilityDB/MobilityLakehouse/blob/main/ROADMAP.md): temporal data as a first-class Iceberg citizen
