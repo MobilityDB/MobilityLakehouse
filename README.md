@@ -150,4 +150,5 @@ they move through are first-class and queried together.
 - **MobilityDB** — the temporal/spatiotemporal database — <https://github.com/MobilityDB/MobilityDB>
 - **MobilityDuck** — the DuckDB extension — <https://github.com/MobilityDB/MobilityDuck>
 - **MobilitySpark** — the Spark integration — <https://github.com/MobilityDB/MobilitySpark>
-- **TemporalParquet format** — the [getting-started guide](./getting-started.md) and examples in this repository
+- **Format specification** — [TemporalParquet](./spec/temporalparquet.md) · [covering columns](./spec/covering-columns.md)
+- **Getting started** — the [end-to-end walkthrough](./getting-started.md)
