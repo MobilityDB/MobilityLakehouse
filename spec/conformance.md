@@ -83,11 +83,10 @@ pruning) and the `temporal` footer is opaque to the catalog. The lakehouse
 targets the open Iceberg **REST Catalog** protocol, with Apache Polaris as the
 recommended OSS server; no catalog is required for the open lake substrate.
 
-## Known gaps
+## Coverage
 
-- **Time-only types** (`tbool`, `ttext`) have no spatial box; their `tmin/tmax`
-  covering needs a span lower/upper bound accessor that is not yet exported by
-  MEOS. Tracked as a MEOS-C export gap, to be closed at the source.
-- **Point-cloud and cell-index types** (`tpcpoint`, `tpcpatch`, `th3index`,
-  `tquadbin`) fold into the spatial class once a uniform temporal-to-`STBOX`
-  converter is confirmed in the catalog.
+The covering descriptor covers the spatial, numeric, and time-only temporal
+types (the last — `tbool`, `ttext` — carry `tmin/tmax` only, no spatial box).
+**Point-cloud and cell-index types** (`tpcpoint`, `tpcpatch`, `th3index`,
+`tquadbin`) fold into the spatial class once a uniform temporal-to-`STBOX`
+converter is confirmed in the catalog.

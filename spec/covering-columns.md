@@ -23,6 +23,7 @@ space-and-time predicate prunes whole files (Iceberg manifests) and row groups
 |---|---|---|
 | spatial (`tgeompoint`, `tgeogpoint`, `tgeometry`, `tgeography`, `tcbuffer`, `tnpoint`, `tpose`, `trgeometry`) | `STBOX` | `xmin xmax ymin ymax` (+ `zmin zmax` for 3D) · `tmin tmax` · `srid` |
 | numeric (`tint`, `tfloat`, `tbigint`) | `TBOX` | `vmin vmax` · `tmin tmax` |
+| time-only (`tbool`, `ttext`) | — | `tmin tmax` |
 
 The value column stays the lossless source of truth; the covering columns are a
 denormalised derivation of the value's bounding box.
