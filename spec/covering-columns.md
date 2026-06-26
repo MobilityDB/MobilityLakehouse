@@ -69,5 +69,5 @@ convention.
 
 ## Related
 
-- [TemporalParquet](./temporalparquet.md) — the file format these columns live in
-- [Getting started](../getting-started.md) — write and query a pruned lakehouse
+- [TemporalParquet](https://github.com/MobilityDB/MobilityLakehouse/blob/main/spec/temporalparquet.md) — the file format these columns live in
+- [Getting started](https://github.com/MobilityDB/MobilityLakehouse/blob/main/getting-started.md) — write and query a pruned lakehouse

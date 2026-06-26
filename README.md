@@ -65,7 +65,7 @@ portable bare-name SQL   ── one query, three engines
 
 ## Try it
 
-▶ **Runnable notebook:** [`examples/mobility-lakehouse-quickstart.ipynb`](./examples/mobility-lakehouse-quickstart.ipynb)
+▶ **Runnable notebook:** [`examples/mobility-lakehouse-quickstart.ipynb`](https://github.com/MobilityDB/MobilityLakehouse/blob/main/examples/mobility-lakehouse-quickstart.ipynb)
 builds this end to end on MobilityDuck — ingest, write, prune, round-trip, Iceberg —
 and renders its executed outputs on GitHub.
 
@@ -99,7 +99,7 @@ WHERE tmax >= TIMESTAMPTZ '2026-02-26' AND tmin < TIMESTAMPTZ '2026-02-27'
 ```
 
 The full ingest → annotate → Iceberg → cross-engine round-trip walkthrough is
-in [getting-started.md](./getting-started.md).
+in [getting-started.md](https://github.com/MobilityDB/MobilityLakehouse/blob/main/getting-started.md).
 
 ## Engines
 
@@ -154,5 +154,5 @@ they move through are first-class and queried together.
 - **MobilityDB** — the temporal/spatiotemporal database — <https://github.com/MobilityDB/MobilityDB>
 - **MobilityDuck** — the DuckDB extension — <https://github.com/MobilityDB/MobilityDuck>
 - **MobilitySpark** — the Spark integration — <https://github.com/MobilityDB/MobilitySpark>
-- **Format specification** — [TemporalParquet](./spec/temporalparquet.md) · [covering columns](./spec/covering-columns.md)
-- **Getting started** — the [end-to-end walkthrough](./getting-started.md)
+- **Format specification** — [TemporalParquet](https://github.com/MobilityDB/MobilityLakehouse/blob/main/spec/temporalparquet.md) · [covering columns](https://github.com/MobilityDB/MobilityLakehouse/blob/main/spec/covering-columns.md)
+- **Getting started** — the [end-to-end walkthrough](https://github.com/MobilityDB/MobilityLakehouse/blob/main/getting-started.md)

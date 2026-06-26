@@ -164,9 +164,9 @@ level before a query reads them — this is the step the
 [AIS Iceberg Explorer](https://ais-explorer-833836401560.europe-west1.run.app/)
 runs over millions of AIS positions.
 
-See the [format specification](../spec/temporalparquet.md) and
-[covering columns](../spec/covering-columns.md) for the details, and
-[getting-started.md](../getting-started.md) for the partitioning and catalog steps.""")
+See the [format specification](https://github.com/MobilityDB/MobilityLakehouse/blob/main/spec/temporalparquet.md) and
+[covering columns](https://github.com/MobilityDB/MobilityLakehouse/blob/main/spec/covering-columns.md) for the details, and
+[getting-started.md](https://github.com/MobilityDB/MobilityLakehouse/blob/main/getting-started.md) for the partitioning and catalog steps.""")
 
 nb["cells"] = cells
 nb["metadata"] = {

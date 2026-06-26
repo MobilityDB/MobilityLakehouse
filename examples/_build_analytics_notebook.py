@@ -14,7 +14,7 @@ def code(t): cells.append(nbf.v4.new_code_cell(t))
 
 md("""# Querying the lake: temporal analytics on AIS trajectories
 
-The [quickstart](./mobility-lakehouse-quickstart.ipynb) wrote a TemporalParquet
+The [quickstart](https://github.com/MobilityDB/MobilityLakehouse/blob/main/examples/mobility-lakehouse-quickstart.ipynb) wrote a TemporalParquet
 lake and pruned it. This notebook shows **what temporal types give you that plain
 points cannot** — read straight from the lake, no re-encoding:
 
@@ -134,8 +134,8 @@ them as **functions of time**: length and speed, position at any instant, slices
 over windows, and spatiotemporal filters pruned by the covering columns. The same
 data, the same queries, run on MobilityDB, MobilityDuck, and MobilitySpark.
 
-Next: the [format specification](../spec/temporalparquet.md), the
-[covering-columns](../spec/covering-columns.md) mechanism, and the live
+Next: the [format specification](https://github.com/MobilityDB/MobilityLakehouse/blob/main/spec/temporalparquet.md), the
+[covering-columns](https://github.com/MobilityDB/MobilityLakehouse/blob/main/spec/covering-columns.md) mechanism, and the live
 [AIS Iceberg Explorer](https://ais-explorer-833836401560.europe-west1.run.app/).""")
 
 nb["cells"] = cells

@@ -99,7 +99,7 @@ Alongside the value column, a TemporalParquet writer materialises primitive
 for spatial types; `vmin/vmax`, `tmin/tmax` for numeric types. These give the
 Parquet/Iceberg engine min/max statistics for row-group and manifest pruning,
 aligned with GeoParquet 1.1 `covering.bbox`. See
-[covering-columns.md](./covering-columns.md).
+[covering-columns.md](https://github.com/MobilityDB/MobilityLakehouse/blob/main/spec/covering-columns.md).
 
 ## Relationship to the lakehouse
 
@@ -111,7 +111,7 @@ the same files work with or without a catalog.
 
 ## Related
 
-- [Covering columns](./covering-columns.md) — the pruning mechanism
-- [Getting started](../getting-started.md) — write and read a TemporalParquet lakehouse
+- [Covering columns](https://github.com/MobilityDB/MobilityLakehouse/blob/main/spec/covering-columns.md) — the pruning mechanism
+- [Getting started](https://github.com/MobilityDB/MobilityLakehouse/blob/main/getting-started.md) — write and read a TemporalParquet lakehouse
 - [GeoParquet](https://geoparquet.org/) — the spatial-Parquet standard this is modelled on
 - [MobilityDuck](https://github.com/MobilityDB/MobilityDuck) — reference implementation on the read/write path
