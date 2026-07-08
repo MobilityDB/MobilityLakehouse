@@ -57,13 +57,25 @@ COPY (
   (FORMAT PARQUET, ROW_GROUP_SIZE 1000);
 ```
 
-Annotate the file with the self-describing `temporal` footer key:
+Embed the self-describing `temporal` footer at write time, with no external
+tool, by passing `temporalFooter()` through DuckDB's Parquet `KV_METADATA`
+option — the footer is a file-level key/value entry, so any Parquet reader sees
+it:
 
-```bash
-python3 tools/temporal_parquet.py annotate \
-  lake/year=2026/month=02/day=26/shard_000.parquet \
-  --column "name=traj,base_type=tgeogpoint,subtype=Sequence,interp=linear,srid=4326,geodetic=true"
+```sql
+COPY (
+  SELECT entity_id, asBinary(traj) AS traj /* … covering columns … */
+  FROM trajectories
+) TO 'lake/year=2026/month=02/day=26/shard_000.parquet'
+  (FORMAT PARQUET,
+   KV_METADATA { temporal: temporalFooter(MAP { 'traj': 'tgeogpoint' }) });
 ```
+
+`temporalFooter(MAP)` maps each value column to its base type and returns the
+JSON footer blob; `KV_METADATA` stores it under the `temporal` key, read back
+with `parquet_kv_metadata()`. For richer per-column annotation (subtype, interp,
+SRID, geodetic flag), the `tools/temporal_parquet.py annotate` helper writes the
+extended footer onto an existing file.
 
 ## 3. Organise shards as a partition tree
 
@@ -118,9 +130,46 @@ print(pq.read_table('lake/year=2026/month=02/day=26/shard_000.parquet').schema)
 
 ## 6. Promote shards to an Iceberg table
 
-Registering the shard tree as an Apache Iceberg table adds snapshots, schema
-evolution, time travel, and a REST catalog over the same files. The covering
-columns become Iceberg column statistics, so the catalog prunes whole files at
-the manifest level before a query reads them. This is the step the
+An Apache Iceberg table adds snapshots, schema evolution, time travel, and a
+REST catalog over the same files. The covering columns become ordinary Iceberg
+columns whose min/max the catalog tracks, so it prunes whole files at the
+manifest level before a query reads them. This is the step the
 [AIS Iceberg Explorer](https://ais-explorer-833836401560.europe-west1.run.app/)
 runs over AIS vessel trajectories.
+
+Both directions are native DuckDB — the value column is opaque `BYTE_ARRAY`
+that Iceberg carries unchanged, and MEOS reconstructs it with the same
+`*FromBinary` functions used for plain Parquet. No mobility-specific Iceberg
+code is involved.
+
+```sql
+INSTALL iceberg; LOAD iceberg;
+
+-- Attach a REST catalog (Apache Polaris) over the open Iceberg protocol
+ATTACH 'warehouse' AS lakehouse (TYPE iceberg, ENDPOINT 'http://polaris:8181/api/catalog');
+
+-- Write: temporal value + covering columns land as a new snapshot
+--        (Iceberg writes require DuckDB 1.4 or later)
+CREATE TABLE lakehouse.mobility.trajectories AS
+SELECT entity_id,
+       asBinary(traj)    AS traj,
+       Xmin(stbox(traj)) AS xmin, Xmax(stbox(traj)) AS xmax,
+       Ymin(stbox(traj)) AS ymin, Ymax(stbox(traj)) AS ymax,
+       Tmin(stbox(traj)) AS tmin, Tmax(stbox(traj)) AS tmax,
+       SRID(traj)        AS srid
+FROM trajectories;
+
+-- Read: pruned by the covering columns, value reconstructed by MEOS
+SELECT entity_id, asText(tgeompointFromBinary(traj))
+FROM lakehouse.mobility.trajectories
+WHERE tmax >= TIMESTAMPTZ '2026-02-26 00:00:00+00'
+  AND tmin <  TIMESTAMPTZ '2026-02-27 00:00:00+00'
+  AND xmax >= 4.0 AND xmin <= 5.0
+  AND ymax >= 51.0 AND ymin <= 52.0;
+```
+
+The same table reads from Spark, Trino, Flink, or PyIceberg over the REST
+protocol: each returns the `BYTE_ARRAY` value column, which its MEOS binding
+decodes. A [DuckLake](https://github.com/MobilityDB/MobilityLakehouse/blob/main/spec/table-formats.md)
+catalog is a drop-in alternative — the same value and covering columns apply
+unchanged.
