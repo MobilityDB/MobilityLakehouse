@@ -27,16 +27,25 @@ Two facts shape everything below.
   contract is injected once at the MEOS catalog; every binding and engine emits
   the identical covering schema by regeneration, with no hand special-cases.
   This is what makes it scale to new temporal types and new engines for free.
+- **The table format is a swappable choice, not a lock-in.** Because the value
+  and covering columns are plain Parquet *below* the table format, Iceberg is
+  the v1 default but not the only option:
+  [DuckLake](https://ducklake.select/) — which keeps table metadata in a SQL
+  catalog — is a supported second table format. Its data files are
+  Iceberg-compatible, so the same TemporalParquet value and generated covering
+  columns apply unchanged and migration is metadata-only. See
+  [table formats](https://github.com/MobilityDB/MobilityLakehouse/blob/main/spec/table-formats.md).
 
 ## Status
 
 | Area | Status |
 | --- | --- |
 | Open file format ([TemporalParquet](https://github.com/MobilityDB/MobilityLakehouse/blob/main/spec/temporalparquet.md)) + [covering columns](https://github.com/MobilityDB/MobilityLakehouse/blob/main/spec/covering-columns.md) | specified |
+| [Table-format layer](https://github.com/MobilityDB/MobilityLakehouse/blob/main/spec/table-formats.md) — Iceberg default, DuckLake supported | specified |
 | Reference deployment ([AIS Iceberg Explorer](https://ais-explorer-833836401560.europe-west1.run.app/)) | live |
 | Runnable [examples](https://github.com/MobilityDB/MobilityLakehouse/blob/main/examples) on MobilityDuck | live |
-| Catalog source of truth — the `temporalCovering` descriptor | MEOS-API [#24](https://github.com/MobilityDB/MEOS-API/pull/24) (open, mergeable) |
-| Generated covering-column projection | MEOS-API [#25](https://github.com/MobilityDB/MEOS-API/pull/25) (open, mergeable) |
+| Catalog source of truth — the `temporalCovering` descriptor | MEOS-API [#24](https://github.com/MobilityDB/MEOS-API/pull/24) (merged) |
+| Generated covering-column projection | MEOS-API [#25](https://github.com/MobilityDB/MEOS-API/pull/25) (merged) |
 | Covering pruning over vector trajectories | proven (examples + benchmark) |
 | Per-binding emission and engine readers | next, generated from the descriptor |
 | MobilityDB producer / streaming sink | decision-gated (see Open decisions) |

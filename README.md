@@ -40,6 +40,13 @@ It has two layers, with two precise roles:
   Iceberg prune whole files, and Parquet prune row groups, *before* reading any
   trajectory — fast spatial-temporal filtering with no spatial-aware engine.
 
+Because the value and its covering columns are plain Parquet — no table-format
+extension — the table format on top is a swappable choice: Iceberg is the v1
+default, and [DuckLake](https://github.com/MobilityDB/MobilityLakehouse/blob/main/spec/table-formats.md)
+is a supported alternative over the same files. Mobility support lives in the
+file layer, below the table format, because no open table format has a native
+temporal type.
+
 The result: the same trajectory dataset is queryable from PostgreSQL, DuckDB,
 or Spark, with SQL, directly on object storage.
 
@@ -154,6 +161,6 @@ they move through are first-class and queried together.
 - **MobilityDB** — the temporal/spatiotemporal database — <https://github.com/MobilityDB/MobilityDB>
 - **MobilityDuck** — the DuckDB extension — <https://github.com/MobilityDB/MobilityDuck>
 - **MobilitySpark** — the Spark integration — <https://github.com/MobilityDB/MobilitySpark>
-- **Format specification** — [TemporalParquet](https://github.com/MobilityDB/MobilityLakehouse/blob/main/spec/temporalparquet.md) · [covering columns](https://github.com/MobilityDB/MobilityLakehouse/blob/main/spec/covering-columns.md) · [conformance](https://github.com/MobilityDB/MobilityLakehouse/blob/main/spec/conformance.md)
+- **Format specification** — [TemporalParquet](https://github.com/MobilityDB/MobilityLakehouse/blob/main/spec/temporalparquet.md) · [covering columns](https://github.com/MobilityDB/MobilityLakehouse/blob/main/spec/covering-columns.md) · [table formats](https://github.com/MobilityDB/MobilityLakehouse/blob/main/spec/table-formats.md) · [conformance](https://github.com/MobilityDB/MobilityLakehouse/blob/main/spec/conformance.md)
 - **Getting started** — the [end-to-end walkthrough](https://github.com/MobilityDB/MobilityLakehouse/blob/main/getting-started.md)
-- **Roadmap** — the [ecosystem plan](https://github.com/MobilityDB/MobilityLakehouse/blob/main/ROADMAP.md): temporal data as a first-class Iceberg citizen
+- **Roadmap** — the [ecosystem plan](https://github.com/MobilityDB/MobilityLakehouse/blob/main/ROADMAP.md): temporal data made prunable across open table formats
