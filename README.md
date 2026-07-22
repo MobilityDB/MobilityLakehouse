@@ -9,7 +9,7 @@ https://creativecommons.org/licenses/by-sa/3.0/
 # MobilityLakehouse
 
 **An open lakehouse for moving objects.** Store and query trajectories — and,
-soon, spatial and spatiotemporal rasters — as open **Apache Iceberg** tables on
+increasingly, spatial and spatiotemporal rasters — as open **Apache Iceberg** tables on
 object storage, readable by every engine in the MobilityDB ecosystem without
 conversion.
 
@@ -140,8 +140,10 @@ convention.
 
 ## Roadmap: rasters and Earth Observation
 
-v1 covers **vector** mobility (trajectories). Next, a **raster** table family
-joins the same lakehouse:
+v1 covers **vector** mobility (trajectories). The **raster** foundation is in
+MobilityDB — the Raquet raster-tile type, GDAL raster ingest, `tquadbin`, and
+raster sampling along trajectories — and a raster table family joins the same
+lakehouse on the same covering mechanism:
 
 - **Raquet** — raster-in-Parquet via CARTO QUADBIN tiling, the raster
   counterpart of TemporalParquet.

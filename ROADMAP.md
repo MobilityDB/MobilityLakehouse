@@ -49,7 +49,7 @@ Two facts shape everything below.
 | Covering pruning over vector trajectories | proven (examples + benchmark) |
 | Per-binding emission and engine readers | next, generated from the descriptor |
 | MobilityDB producer / streaming sink | decision-gated (see Open decisions) |
-| Raster / Raquet / Earth Observation | open PRs (see Roadmap below) |
+| Raster / Raquet / Earth Observation | MobilityDB raster types present; lakehouse tables next (see Roadmap below) |
 
 The catalog layer — the single source of truth — is built: descriptor #24
 plus its projection #25, every referenced symbol verified present in the
@@ -84,15 +84,17 @@ pruning that generic sinks do not provide.
 
 ## Roadmap: rasters and Earth Observation
 
-Vector mobility is v1. A raster table family joins the same lakehouse:
+Vector mobility is v1. The raster foundation is in MobilityDB, and a raster
+table family joins the same lakehouse on the same covering mechanism:
 
-- **Raquet** — raster-in-Parquet via CARTO QUADBIN tiling
-  ([#1217](https://github.com/MobilityDB/MobilityDB/pull/1217)).
+- **Raquet** — raster-in-Parquet via CARTO QUADBIN tiling, the raster
+  counterpart of TemporalParquet
+  ([#1332](https://github.com/MobilityDB/MobilityDB/pull/1332) raster-tile type,
+  [#1340](https://github.com/MobilityDB/MobilityDB/pull/1340) GDAL ingest).
 - **`tquadbin`** — a temporal QUADBIN cell index bridging trajectories and
   raster tiles ([#1210](https://github.com/MobilityDB/MobilityDB/pull/1210)).
 - **Raster sampling along trajectories** — enrich a path from a raster
-  ([#1216](https://github.com/MobilityDB/MobilityDB/pull/1216),
-  [#1218](https://github.com/MobilityDB/MobilityDB/pull/1218)).
+  ([#1218](https://github.com/MobilityDB/MobilityDB/pull/1218)).
 - **Earth-observation satellite imagery** — EO scenes as time-stamped raster
   tiles, co-located with trajectories and jointly queryable.
 
