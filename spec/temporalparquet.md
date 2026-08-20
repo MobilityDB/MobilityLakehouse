@@ -97,9 +97,39 @@ that calls `tgeogpointFromBinary(blob)`.
 Alongside the value column, a TemporalParquet writer materialises primitive
 **covering columns** — `xmin/xmax/ymin/ymax[/zmin/zmax]`, `tmin/tmax`, `srid`
 for spatial types; `vmin/vmax`, `tmin/tmax` for numeric types. These give the
-Parquet/Iceberg engine min/max statistics for row-group and manifest pruning,
-aligned with GeoParquet 1.1 `covering.bbox`. See
-[covering-columns.md](https://github.com/MobilityDB/MobilityLakehouse/blob/main/spec/covering-columns.md).
+Parquet/Iceberg engine min/max statistics for row-group and manifest pruning.
+See [covering-columns.md](https://github.com/MobilityDB/MobilityLakehouse/blob/main/spec/covering-columns.md).
+
+A column's covering is declared in `temporal`, in the shape GeoParquet 1.1 uses
+for `covering.bbox`: a mapping from each bound to the column that carries it, so
+a consumer finds the columns by reading the metadata rather than by guessing
+their names.
+
+```jsonc
+"traj": {
+  "encoding": "MEOS-WKB",
+  "base_type": "tgeompoint",
+  "covering": {
+    "bbox": {
+      "xmin": ["traj_bbox", "xmin"], "ymin": ["traj_bbox", "ymin"],
+      "xmax": ["traj_bbox", "xmax"], "ymax": ["traj_bbox", "ymax"],
+      "tmin": ["traj_bbox", "tmin"], "tmax": ["traj_bbox", "tmax"]
+    }
+  }
+}
+```
+
+The mapping is GeoParquet's, with `tmin` and `tmax` beside the spatial bounds.
+It is declared here rather than in `geo` because `covering` is a member of a
+*geometry* column's metadata there, and a temporal column is not a geometry
+column — see [conformance.md](https://github.com/MobilityDB/MobilityLakehouse/blob/main/spec/conformance.md)
+for the rules that govern the two keys living in one file.
+
+Carrying the time bounds in the same structure is the smallest useful extension
+of GeoParquet's own vocabulary, and it is offered as such: were `covering.bbox`
+to admit `tmin` and `tmax`, a spatial-and-temporal pruning predicate would be
+expressible in GeoParquet itself, additively and compatibly with every file
+already written.
 
 ## Relationship to the lakehouse
 
