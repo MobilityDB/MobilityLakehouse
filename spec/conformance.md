@@ -29,8 +29,48 @@ A TemporalParquet file is conformant when:
    spatial → `xmin xmax ymin ymax [zmin zmax] tmin tmax srid`; numeric →
    `vmin vmax tmin tmax`.
 
-A file may carry additional columns and GeoParquet's `geo` key; they do not
-affect conformance.
+A file may carry additional columns, and it may carry other metadata keys —
+GeoParquet's `geo` among them. Doing so does not affect TemporalParquet
+conformance, and TemporalParquet owes those keys three guarantees.
+
+## Composing with GeoParquet
+
+TemporalParquet does not claim to be GeoParquet, and a TemporalParquet file is
+not a GeoParquet file by virtue of carrying trajectories. The two describe
+different things: GeoParquet describes a column of geometries, TemporalParquet a
+column of values that vary over time. They compose, in the way MobilityDB
+composes with PostGIS — a user keeps their geometry columns and the tools that
+read them, and gains temporal columns beside them without changing either.
+
+GeoParquet is explicit that this is allowed: *"additional
+implementation-specific fields (e.g. library name) MAY be present, and readers
+should be robust in ignoring those"*, with GDAL's `gdal:schema` key as the
+working precedent.
+
+What TemporalParquet owes a file that also carries `geo`:
+
+1. **Non-interference.** A valid GeoParquet file that gains a `temporal` key and
+   covering columns is still a valid GeoParquet file. Its `geo` metadata still
+   validates against the GeoParquet schema, its geometry columns are unchanged,
+   and a GeoParquet reader returns what it returned before.
+2. **No shadowing.** TemporalParquet never writes inside `geo`, never redefines
+   anything GeoParquet defines, and never names a column GeoParquet names. A
+   temporal column's covering columns are declared in `temporal`.
+3. **Additivity.** A reader that ignores `temporal` loses nothing it had; a
+   reader that understands it gains the temporal columns. Neither reader needs
+   the other's vocabulary.
+
+These are checkable rather than promised.
+`tools/check_geoparquet_noninterference.py` reads a file's metadata, validates
+its `geo` against the GeoParquet schema, and reports any column name claimed by
+both keys.
+
+A file with no geometry column is not a GeoParquet file and does not pretend to
+be one; a file of `tint` or `tfloat` columns has nothing spatial in it. Making
+every file qualify by materialising a geometry column derived from its
+trajectories is the one thing this specification does not do: the temporal value
+is the source of truth, and a derived duplicate of it would have to be kept
+consistent by every writer for the benefit of a label.
 
 ## A conformant engine
 
