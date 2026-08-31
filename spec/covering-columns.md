@@ -59,6 +59,21 @@ WHERE tmax >= TIMESTAMPTZ '2026-02-26' AND tmin < TIMESTAMPTZ '2026-02-27'
 Aligned with GeoParquet 1.1 `covering.bbox`: the same columns serve Parquet
 row-group pruning and Iceberg manifest-level file pruning.
 
+The predicate is a plain conjunction on every row, because a MobilityDB box
+always satisfies `xmin <= xmax`. A box accessor takes the minimum and maximum of
+the coordinates it sees, so a value crossing the antimeridian is reported as
+`xmin = -179, xmax = 179` rather than in the wrapped `xmin > xmax` form that
+[RFC 7946 section 5](https://tools.ietf.org/html/rfc7946#section-5) defines. The
+covering is therefore conservative: it over-covers, and no row is ever missed.
+
+### What a value crossing the antimeridian costs
+
+Such a value covers nearly the whole longitude range, so it is selected by
+almost any window and prunes on time alone. A writer that wants it pruned in
+space splits the value at the antimeridian and materialises one row per part,
+each with a covering inside a single hemisphere. The value column stays the
+lossless source of truth either way.
+
 ## One source of truth across engines
 
 The set of covering columns per temporal type is not hand-written per engine.
