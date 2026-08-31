@@ -126,10 +126,25 @@ column — see [conformance.md](https://github.com/MobilityDB/MobilityLakehouse/
 for the rules that govern the two keys living in one file.
 
 Carrying the time bounds in the same structure is the smallest useful extension
-of GeoParquet's own vocabulary, and it is offered as such: were `covering.bbox`
-to admit `tmin` and `tmax`, a spatial-and-temporal pruning predicate would be
+of GeoParquet's own vocabulary, and it is offered as such: a `covering.bbox`
+that admits `tmin` and `tmax` makes a spatial-and-temporal pruning predicate
 expressible in GeoParquet itself, additively and compatibly with every file
 already written.
+
+`covering` is a GeoParquet 1.1 field. GeoParquet 2.0 carries no `covering`, and
+its overview points at the Parquet format's own geospatial types and statistics
+for per-column bounds, where a geometry column's `GeospatialStatistics` holds a
+`BoundingBox` whose optional `mmin`/`mmax` the format already describes as
+usable for a timestamp. The candidate a temporal lakehouse most wants is
+therefore addressed to Parquet rather than to GeoParquet: a temporal statistic
+in the column metadata, so that a time predicate prunes natively on a column
+whose logical type is not `GEOMETRY` or `GEOGRAPHY`. Both candidates, and the
+questions the published GeoParquet artifacts raise, are stated in
+[Extending GeoParquet in MobilityDB](https://github.com/MobilityDB/MobilityDB/wiki/Extending-GeoParquet-in-MobilityDB).
+
+Either way the covering columns are unaffected: they are primitive columns with
+ordinary Parquet statistics, and they prune on any engine with no metadata
+convention at all. What a standard buys them is discoverability.
 
 ## Relationship to the lakehouse
 
