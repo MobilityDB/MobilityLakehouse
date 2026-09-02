@@ -1,0 +1,2 @@
+source,raw_messages,raw_vessels,classA_messages,classA_vessels,classA_dedup_messages,classA_msg_pct_of_raw,classA_vessel_pct_of_raw,dedup_pct_of_classA
+data/raw/aisdk-2026-01-15.parquet,16773395,3258,14970090,2314,8895694,89.25,71.03,59.42

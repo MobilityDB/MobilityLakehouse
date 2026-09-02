@@ -1,0 +1,17 @@
+.venv/
+__pycache__/
+*.pyc
+.env
+.ipynb_checkpoints/
+
+# Zones and inputs the pipeline builds, never committed. natural_areas.parquet
+# is needed by queries/iceberg_region and experiments/h3_prefilter; regenerate
+# it with scripts/natural_areas_to_parquet.py (see README).
+data/
+
+experiments/h3_prefilter/cache/
+experiments/raster/data/
+
+# Figures the notebooks regenerate. The committed ones live beside their
+# experiment (experiments/h3_prefilter/figures/), not here.
+/figures/

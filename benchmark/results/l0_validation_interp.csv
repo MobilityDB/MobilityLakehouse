@@ -1,0 +1,7 @@
+source,bucket,n,med_m,p90_m,p95_m
+data/raw/aisdk-2026-01-15.parquet,<30s,7680390,0.44,4.95,7.43
+data/raw/aisdk-2026-01-15.parquet,30-60s,769284,0.48,3.65,5.53
+data/raw/aisdk-2026-01-15.parquet,60-120s,94246,0.68,4.38,6.9
+data/raw/aisdk-2026-01-15.parquet,120-300s,212775,0.68,4.33,7.06
+data/raw/aisdk-2026-01-15.parquet,300-600s,114552,1.01,4.33,7.1
+data/raw/aisdk-2026-01-15.parquet,all,8871252,0.46,4.81,7.21

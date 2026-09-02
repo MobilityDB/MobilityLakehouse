@@ -1,0 +1,5 @@
+layout,regime,bytes_pct,rows_pct,runtime_ms,vessels
+L0,corridor,6.595,0.164,498.767,135.667
+L0,open_water,6.595,0.002,264.375,5.25
+L3s,corridor,1.04,0.049,86.7,99.667
+L3s,open_water,0.157,0.001,14.6,4.0

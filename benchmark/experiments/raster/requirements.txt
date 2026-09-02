@@ -1,0 +1,8 @@
+duckdb==1.4.4
+copernicusmarine
+xarray
+netCDF4
+rioxarray
+rasterio
+pandas
+matplotlib

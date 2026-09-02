@@ -1,0 +1,11 @@
+query,Q,lake_rows_read_pct,wh_rows_read_pct,rows_x,lake_bytes_read_pct,wh_bytes_read_pct,bytes_x
+both_ports,Q5.1,0.0039,0.0456,11.7,0.444,18.188,40.9
+harbour_entry,Q5.2,0.0567,0.2984,5.3,1.224,8.712,7.1
+clip_to_region,Q5.3,0.0589,0.1417,2.4,0.359,5.24,14.6
+fleet_summary,Q5.4,0.0589,0.1417,2.4,0.359,4.023,11.2
+bounding_box,Q5.5,0.0589,0.1417,2.4,0.359,10.676,29.7
+speed_profile,Q5.6,0.0589,0.1417,2.4,0.359,7.851,21.9
+position_interpolation,Q5.7,0.0589,0.1417,2.4,0.359,6.643,18.5
+nearest_approach,Q5.8,0.0589,0.1417,2.4,0.359,21.981,61.2
+collision,Q5.9,0.0589,0.1417,2.4,0.359,32.874,91.5
+encounter_zone,Q5.10,0.0589,0.1417,2.4,0.359,32.874,91.5

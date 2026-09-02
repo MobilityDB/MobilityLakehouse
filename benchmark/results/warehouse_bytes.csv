@@ -1,0 +1,11 @@
+backend,query,shared_hit_blocks,shared_read_blocks,temp_read_blocks,blocks_total,bytes_read
+mobilitydb_warehouse_L0,clip_to_region,39671,0,0,39671,324984832
+mobilitydb_warehouse_L0,harbour_entry,65475,0,0,65475,536371200
+mobilitydb_warehouse_L0,both_ports,137695,0,0,137695,1127997440
+mobilitydb_warehouse_L0,position_interpolation,50264,0,0,50264,411762688
+mobilitydb_warehouse_L0,collision,248408,0,2168185,248408,2034958336
+mobilitydb_warehouse_L0,encounter_zone,248408,0,2168185,248408,2034958336
+mobilitydb_warehouse_L0,nearest_approach,166096,0,1300911,166096,1360658432
+mobilitydb_warehouse_L0,fleet_summary,30444,0,0,30444,249397248
+mobilitydb_warehouse_L0,bounding_box,80752,0,0,80752,661520384
+mobilitydb_warehouse_L0,speed_profile,59424,0,0,59424,486801408

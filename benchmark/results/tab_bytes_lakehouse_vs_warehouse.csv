@@ -1,0 +1,11 @@
+Q,query,iceberg_L0_MB,iceberg_L3s_MB,ducklake_L3s_MB,warehouse_MB,warehouse_L3s_MB,wh_over_L3s,whL3s_over_iceL3s,self_join
+Q5.2,harbour_entry,234.2,46.6,50.4,536.4,819.9,11.5,17.6,False
+Q5.4,fleet_summary,234.6,13.7,13.9,249.4,605.8,18.2,44.2,False
+Q5.3,clip_to_region,234.6,13.7,13.9,325.0,806.9,23.7,58.9,False
+Q5.7,position_interpolation,234.6,13.7,13.9,411.8,823.0,30.1,60.1,False
+Q5.6,speed_profile,234.6,13.7,13.9,486.8,817.6,35.5,59.7,False
+Q5.5,bounding_box,234.6,13.7,13.9,661.5,849.8,48.3,62.0,False
+Q5.1,both_ports,468.5,16.4,16.9,1128.0,1445.4,68.8,88.1,False
+Q5.8,nearest_approach,234.6,13.7,13.9,1360.7,1437.7,99.3,104.9,True
+Q5.9,collision,234.6,13.7,13.9,2035.0,1937.7,148.5,141.4,True
+Q5.10,encounter_zone,234.6,13.7,13.9,2035.0,1937.7,148.5,141.4,True

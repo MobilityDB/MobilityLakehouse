@@ -1,0 +1,4 @@
+backend,plan_ms_L3s,metadata_MB,two_readers
+Iceberg REST,22.23,0.54,yes
+DuckLake (file),5.24,4.99,NO
+DuckLake (Postgres),10.09,4.99,yes

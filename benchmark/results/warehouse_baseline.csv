@@ -1,0 +1,11 @@
+query,answer,mobilitydb_ms
+clip_to_region,113,100.8
+harbour_entry,96,190.3
+both_ports,4,253.9
+position_interpolation,26,147.3
+collision,165,1085.9
+encounter_zone,195,1227.7
+nearest_approach,0.0,1306.4
+fleet_summary,2876.4,206.8
+bounding_box,61.43,417.8
+speed_profile,34.7,210.8

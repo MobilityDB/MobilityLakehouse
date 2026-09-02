@@ -1,0 +1,11 @@
+backend,query,answer,runtime_ms,blocks_total,bytes_read,n_iters
+mobilitydb_warehouse_L3s,clip_to_region,112,72.9,98498,806895616,5
+mobilitydb_warehouse_L3s,harbour_entry,95,87.5,100086,819904512,5
+mobilitydb_warehouse_L3s,both_ports,4,62.1,176445,1445437440,5
+mobilitydb_warehouse_L3s,position_interpolation,28,94.9,100463,822992896,5
+mobilitydb_warehouse_L3s,collision,162,4343.5,236534,1937686528,5
+mobilitydb_warehouse_L3s,encounter_zone,193,4499.9,236534,1937686528,5
+mobilitydb_warehouse_L3s,nearest_approach,0.0,4589.8,175496,1437663232,5
+mobilitydb_warehouse_L3s,fleet_summary,2632.3,102.1,73954,605831168,5
+mobilitydb_warehouse_L3s,bounding_box,60.76,184.1,103738,849821696,5
+mobilitydb_warehouse_L3s,speed_profile,35.3,108.3,99808,817627136,5

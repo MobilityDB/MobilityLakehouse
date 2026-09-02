@@ -1,0 +1,11 @@
+query,mobilityduck,mobilitydb,match,symdiff
+clip_to_region,115,115,yes,0
+harbour_entry,99,99,yes,0
+both_ports,4,4,yes,0
+position_interpolation,29,29,yes,0
+collision,163,163,yes,
+encounter_zone,194,194,yes,
+nearest_approach,0.0,0.0,yes,
+fleet_summary,2840.5,2840.5,yes,
+bounding_box,62.69,62.69,yes,
+speed_profile,35.9,35.9,yes,

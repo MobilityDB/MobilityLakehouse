@@ -1,0 +1,13 @@
+layout,arrangement,splits_paths,recall_pct,worst_cell_pct,length_kept_pct,bytes_read_pct
+L0,"baseline, whole segments",False,100.0,100.0,100.0,13.14
+L0X,in-file lexicographic sort,False,100.0,100.0,100.0,11.33
+L0Z,in-file Z-order sort,False,100.0,100.0,100.0,11.31
+L0H,in-file Hilbert sort,False,100.0,100.0,100.0,10.02
+L1,"hash(mmsi), daily",False,100.0,100.0,100.0,12.63
+L1s,"hash(mmsi), compact",False,100.0,100.0,100.0,57.67
+L2,"regular tiles, daily",True,100.0,100.0,100.0,1.0
+L2s,"regular tiles, compact",True,100.0,100.0,100.0,0.71
+L3,"adaptive tiles, daily",True,99.96,99.62,96.27,1.0
+L3s,"adaptive tiles, compact",True,99.96,99.62,96.27,0.63
+L4,"time bins, daily",True,100.0,100.0,100.0,10.76
+L4s,"time bins, compact",True,100.0,100.0,100.0,21.1

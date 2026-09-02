@@ -1,0 +1,4 @@
+backend,two_readers_ok,detail
+iceberg,True,"8,232,719 / 8,232,719"
+ducklake_file,False,BinderException
+ducklake_pg,True,"8,232,719 / 8,232,719"

@@ -1,0 +1,11 @@
+backend,query,shared_hit_blocks,shared_read_blocks,temp_read_blocks,blocks_total,bytes_read
+warehouse_baseline_L0,clip_to_region,39686,3,0,39689,325132288
+warehouse_baseline_L0,harbour_entry,65993,0,0,65993,540614656
+warehouse_baseline_L0,both_ports,137765,0,0,137765,1128570880
+warehouse_baseline_L0,position_interpolation,50318,0,0,50318,412205056
+warehouse_baseline_L0,collision,249011,0,2326060,249011,2039898112
+warehouse_baseline_L0,encounter_zone,249011,0,2326060,249011,2039898112
+warehouse_baseline_L0,nearest_approach,166501,0,1395636,166501,1363976192
+warehouse_baseline_L0,fleet_summary,30471,0,0,30471,249618432
+warehouse_baseline_L0,bounding_box,80869,0,0,80869,662478848
+warehouse_baseline_L0,speed_profile,59469,0,0,59469,487170048

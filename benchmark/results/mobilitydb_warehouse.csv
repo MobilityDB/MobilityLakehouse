@@ -1,0 +1,11 @@
+query,answer,warehouse_mdb_ms,index_candidate_rows
+clip_to_region,115,102.4,541
+harbour_entry,99,188.5,1139
+both_ports,4,256.0,174
+position_interpolation,29,148.6,541
+collision,163,862.2,541
+encounter_zone,194,872.5,541
+nearest_approach,0.0,901.2,541
+fleet_summary,2840.5,146.1,541
+bounding_box,62.69,300.4,541
+speed_profile,35.9,155.0,541

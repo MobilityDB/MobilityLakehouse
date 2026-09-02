@@ -1,0 +1,3 @@
+layout,query,selectivity,answer,bytes_pct,runtime_trimmed_s
+L2_daily,clip_to_region,hour,28,1.0,0.1
+L3_daily,clip_to_region,hour,28,1.0,0.1

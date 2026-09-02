@@ -1,0 +1,8 @@
+region,regime,seg/month,vessels,L0 bytes (%),L3s bytes (%),prune
+belt (corridor),corridor,13262,165,6.595,0.907,7.3
+goteborg (corridor),corridor,29271,111,6.595,1.268,5.2
+oresund (corridor),corridor,8485,131,6.595,0.946,7.0
+north_sea_west (open),open_water,216,3,6.595,0.172,38.3
+north_sea_south (open),open_water,45,0,6.594,0.008,824.2
+skagerrak (open),open_water,524,11,6.595,0.166,39.7
+kattegat (open),open_water,3138,7,6.595,0.283,23.3
