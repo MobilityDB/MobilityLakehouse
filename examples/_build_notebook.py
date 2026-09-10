@@ -83,44 +83,47 @@ duck("SELECT mmsi, numInstants(traj) AS pings, duration(traj) AS span FROM traje
 md("""## 2. Write a TemporalParquet shard with covering columns
 
 The trajectory is stored as a lossless `BYTE_ARRAY` (MEOS-WKB). Alongside it we
-materialise primitive **covering columns** — the bounding box and time extent —
-so Parquet and Iceberg can prune without decoding any trajectory.""")
+materialise **covering columns** — a GeoParquet bounding box column and the time
+extent — so Parquet and Iceberg can prune without decoding any trajectory.""")
 
 code("""duck(\"\"\"
 COPY (
   SELECT mmsi,
-         asBinary(traj)    AS traj,                 -- canonical value (BLOB)
-         Xmin(stbox(traj)) AS xmin, Xmax(stbox(traj)) AS xmax,
-         Ymin(stbox(traj)) AS ymin, Ymax(stbox(traj)) AS ymax,
-         Tmin(stbox(traj)) AS tmin, Tmax(stbox(traj)) AS tmax,
-         SRID(traj)        AS srid
+         asBinary(traj) AS traj,                    -- canonical value (BLOB)
+         {'xmin': Xmin(stbox(traj)), 'ymin': Ymin(stbox(traj)),
+          'xmax': Xmax(stbox(traj)), 'ymax': Ymax(stbox(traj))} AS traj_bbox,
+         {'tmin': Tmin(stbox(traj)), 'tmax': Tmax(stbox(traj))} AS traj_tspan,
+         SRID(traj)     AS srid
   FROM trajectories
 ) TO 'ais_shard.parquet' (FORMAT PARQUET);
 \"\"\")
 
-# the value column is an opaque BLOB; the covering columns are plain primitives
+# the value column is an opaque BLOB; the covering columns are structs of primitives
 duck(\"\"\"SELECT name, type FROM parquet_schema('ais_shard.parquet')
-         WHERE name IN ('traj','xmin','xmax','tmin','tmax','srid') ORDER BY name\"\"\")""")
+         WHERE name IN ('traj','traj_bbox','xmin','xmax','traj_tspan','tmin','tmax','srid')
+         ORDER BY name\"\"\")""")
 
 md("""The covering columns hold the **real** double-precision bounds (the value column
 keeps full precision; only the text rendering of a trajectory is rounded):""")
 
-code("""duck(\"\"\"SELECT mmsi, xmin, xmax, ymin, ymax, srid FROM read_parquet('ais_shard.parquet')
-         ORDER BY mmsi\"\"\")""")
+code("""duck(\"\"\"SELECT mmsi, traj_bbox.xmin, traj_bbox.xmax, traj_bbox.ymin, traj_bbox.ymax, srid
+         FROM read_parquet('ais_shard.parquet') ORDER BY mmsi\"\"\")""")
 
 md("""## 3. Query it: pruned by space and time
 
-A bounding-box-and-time predicate is a scalar AND-chain over the covering columns.
-The engine evaluates it against column statistics and skips non-intersecting files
-and row groups, with **no spatial-aware engine and no spatial extension**. Here the
-window over the Scheldt approaches keeps vessel `211512000` and prunes `244660000`.""")
+A bounding-box-and-time predicate is a scalar AND-chain over the fields of the
+covering columns. The engine evaluates it against their statistics and skips
+non-intersecting files and row groups, with **no spatial-aware engine and no spatial
+extension**. Here the window over the Scheldt approaches keeps vessel `211512000` and
+prunes `244660000`.""")
 
 code("""duck(\"\"\"
 SELECT mmsi, numInstants(tgeogpointFromBinary(traj)) AS pings
 FROM read_parquet('ais_shard.parquet')
-WHERE tmax >= TIMESTAMPTZ '2026-02-26' AND tmin < TIMESTAMPTZ '2026-02-27'
-  AND xmax >= 4.5 AND xmin <= 5.0
-  AND ymax >= 51.0 AND ymin <= 51.6
+WHERE traj_tspan.tmax >= TIMESTAMPTZ '2026-02-26'
+  AND traj_tspan.tmin <  TIMESTAMPTZ '2026-02-27'
+  AND traj_bbox.xmax >= 4.5 AND traj_bbox.xmin <= 5.0
+  AND traj_bbox.ymax >= 51.0 AND traj_bbox.ymin <= 51.6
 ORDER BY mmsi
 \"\"\")""")
 
@@ -132,12 +135,12 @@ the storage is lossless.""")
 
 code("""duck(\"\"\"
 WITH back AS (
-  SELECT mmsi, tgeogpointFromBinary(traj) AS traj, xmin, xmax, ymin, ymax
+  SELECT mmsi, tgeogpointFromBinary(traj) AS traj, traj_bbox AS b
   FROM read_parquet('ais_shard.parquet')
 )
 SELECT mmsi,
-       Xmin(stbox(traj)) = xmin AND Xmax(stbox(traj)) = xmax
-   AND Ymin(stbox(traj)) = ymin AND Ymax(stbox(traj)) = ymax AS lossless
+       Xmin(stbox(traj)) = b.xmin AND Xmax(stbox(traj)) = b.xmax
+   AND Ymin(stbox(traj)) = b.ymin AND Ymax(stbox(traj)) = b.ymax AS lossless
 FROM back ORDER BY mmsi
 \"\"\")""")
 

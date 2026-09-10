@@ -40,8 +40,8 @@ both plain Parquet constructs:
 1. **A lossless value encoding** — the trajectory as compact MEOS-WKB in a
    Parquet `BYTE_ARRAY`, reconstructed by MEOS on read
    ([TemporalParquet](https://github.com/MobilityDB/MobilityLakehouse/blob/main/spec/temporalparquet.md)).
-2. **Generated covering columns** — scalar bounding-box and time-extent columns
-   (`xmin … tmax`, `srid`), GeoParquet 1.1 `covering.bbox`-aligned, so the table
+2. **Generated covering columns** — bounding-box and time-extent struct columns
+   (`<col>_bbox`, a GeoParquet bounding box column, and `<col>_tspan`), so the table
    format's *existing* min/max, partition, and manifest machinery prunes files
    and row groups before any trajectory is read
    ([covering columns](https://github.com/MobilityDB/MobilityLakehouse/blob/main/spec/covering-columns.md)).
