@@ -74,8 +74,9 @@ COPY (
 `temporalFooter(MAP)` maps each value column to its base type and returns the
 JSON footer blob; `KV_METADATA` stores it under the `temporal` key, read back
 with `parquet_kv_metadata()`. For richer per-column annotation (subtype, interp,
-SRID, geodetic flag), the `tools/temporal_parquet.py annotate` helper writes the
-extended footer onto an existing file.
+SRID, geodetic flag), the `annotate` command of MobilityDuck's
+[`tools/temporal_parquet.py`](https://github.com/MobilityDB/MobilityDuck/blob/main/tools/temporal_parquet.py)
+writes the extended footer onto an existing file.
 
 ## 3. Organise shards as a partition tree
 
