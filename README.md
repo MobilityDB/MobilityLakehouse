@@ -58,7 +58,7 @@ raw events (CSV, MQTT, NMEA, AIS, …)
         ▼
 TemporalParquet shards on object storage
    value column:    BYTE_ARRAY (MEOS-WKB), lossless
-   covering columns: xmin xmax ymin ymax [zmin zmax] tmin tmax srid
+   covering columns: <col>_bbox {xmin ymin [zmin] xmax ymax [zmax]} · <col>_tspan {tmin tmax} · srid
    footer key:      `temporal`  (self-describing, GeoParquet-style)
         ▼
 Apache Iceberg tables   ── snapshots · schema evolution · time travel
@@ -91,9 +91,9 @@ GROUP BY entity_id HAVING count(*) >= 3;
 COPY (
   SELECT entity_id,
          asBinary(traj)    AS traj,                  -- canonical value (BLOB)
-         Xmin(stbox(traj)) AS xmin, Xmax(stbox(traj)) AS xmax,
-         Ymin(stbox(traj)) AS ymin, Ymax(stbox(traj)) AS ymax,
-         Tmin(stbox(traj)) AS tmin, Tmax(stbox(traj)) AS tmax,
+         {'xmin': Xmin(stbox(traj)), 'ymin': Ymin(stbox(traj)),
+          'xmax': Xmax(stbox(traj)), 'ymax': Ymax(stbox(traj))} AS traj_bbox,
+         {'tmin': Tmin(stbox(traj)), 'tmax': Tmax(stbox(traj))} AS traj_tspan,
          SRID(traj)        AS srid
   FROM trajectories
 ) TO 'lake/year=2026/month=02/day=26/shard_000.parquet' (FORMAT PARQUET);
@@ -101,8 +101,10 @@ COPY (
 -- 3. Query, pruned by space and time before any value is read
 SELECT entity_id, asText(tgeompointFromBinary(traj))
 FROM read_parquet('lake/**/*.parquet')
-WHERE tmax >= TIMESTAMPTZ '2026-02-26' AND tmin < TIMESTAMPTZ '2026-02-27'
-  AND xmax >= 4.0 AND xmin <= 5.0 AND ymax >= 51.0 AND ymin <= 52.0;
+WHERE traj_tspan.tmax >= TIMESTAMPTZ '2026-02-26'
+  AND traj_tspan.tmin <  TIMESTAMPTZ '2026-02-27'
+  AND traj_bbox.xmax >= 4.0 AND traj_bbox.xmin <= 5.0
+  AND traj_bbox.ymax >= 51.0 AND traj_bbox.ymin <= 52.0;
 ```
 
 The full ingest → annotate → Iceberg → cross-engine round-trip walkthrough is

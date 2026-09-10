@@ -68,9 +68,9 @@ INSERT INTO raw VALUES
 duck(\"\"\"
 COPY (
   SELECT (ts::DATE)::VARCHAR AS day, mmsi, asBinary(traj) AS traj,
-         Xmin(stbox(traj)) xmin, Xmax(stbox(traj)) xmax,
-         Ymin(stbox(traj)) ymin, Ymax(stbox(traj)) ymax,
-         Tmin(stbox(traj)) tmin, Tmax(stbox(traj)) tmax
+         {'xmin': Xmin(stbox(traj)), 'ymin': Ymin(stbox(traj)),
+          'xmax': Xmax(stbox(traj)), 'ymax': Ymax(stbox(traj))} traj_bbox,
+         {'tmin': Tmin(stbox(traj)), 'tmax': Tmax(stbox(traj))} traj_tspan
   FROM (SELECT ts::DATE AS d, mmsi,
                tgeogpointSeq(list(TGEOGPOINT(ST_Point(lon,lat), ts) ORDER BY ts)) AS traj,
                min(ts) AS ts
@@ -98,8 +98,9 @@ meet the query box (and, once this tree is an Iceberg table, whole files at the
 manifest level before any read).""")
 
 code("""q = \"\"\"SELECT mmsi FROM read_parquet('lake/**/*.parquet', hive_partitioning=true)
-         WHERE day = '2026-02-27' AND xmax >= 3.0 AND xmin <= 4.0
-                                  AND ymax >= 51.5 AND ymin <= 52.5\"\"\"
+         WHERE day = '2026-02-27'
+           AND traj_bbox.xmax >= 3.0 AND traj_bbox.xmin <= 4.0
+           AND traj_bbox.ymax >= 51.5 AND traj_bbox.ymin <= 52.5\"\"\"
 print("result:")
 print(duck(q).to_string(index=False))
 print("\\npruning:", files_read(q))""")

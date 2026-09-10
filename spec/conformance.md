@@ -21,13 +21,13 @@ A TemporalParquet file is conformant when:
    MEOS-WKB; nulls are Parquet nulls.
 2. **Footer** — the file's `key_value_metadata` carries a `temporal` key whose
    JSON describes each temporal column (`base_type`, `subtype`, `interpolation`,
-   `srid`, `geodetic`, `has_z`, `encoding_version`), per the
+   `srid`, `crs`, `edges`, `geodetic`, `has_z`, `encoding_version`), per the
    [TemporalParquet spec](https://github.com/MobilityDB/MobilityLakehouse/blob/main/spec/temporalparquet.md).
-3. **Covering columns** — for each temporal column, the primitive covering
-   columns its class requires are present and correct, per the
+3. **Covering columns** — for each temporal column, the covering columns its
+   class requires are present and correct, per the
    [covering-columns spec](https://github.com/MobilityDB/MobilityLakehouse/blob/main/spec/covering-columns.md):
-   spatial → `xmin xmax ymin ymax [zmin zmax] tmin tmax srid`; numeric →
-   `vmin vmax tmin tmax`.
+   spatial → `bbox` (a GeoParquet bounding box column), `tspan` and `srid`;
+   numeric → `vspan` and `tspan`; time-only → `tspan`.
 
 A file may carry additional columns, and it may carry other metadata keys —
 GeoParquet's `geo` among them. Doing so does not affect TemporalParquet

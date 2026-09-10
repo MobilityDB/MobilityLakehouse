@@ -57,9 +57,10 @@ INSERT INTO raw VALUES
 duck(\"\"\"
 COPY (
   SELECT mmsi, asBinary(traj) AS traj,
-         Xmin(stbox(traj)) xmin, Xmax(stbox(traj)) xmax,
-         Ymin(stbox(traj)) ymin, Ymax(stbox(traj)) ymax,
-         Tmin(stbox(traj)) tmin, Tmax(stbox(traj)) tmax, SRID(traj) srid
+         {'xmin': Xmin(stbox(traj)), 'ymin': Ymin(stbox(traj)),
+          'xmax': Xmax(stbox(traj)), 'ymax': Ymax(stbox(traj))} traj_bbox,
+         {'tmin': Tmin(stbox(traj)), 'tmax': Tmax(stbox(traj))} traj_tspan,
+         SRID(traj) srid
   FROM (SELECT mmsi, tgeogpointSeq(list(TGEOGPOINT(ST_Point(lon,lat), ts) ORDER BY ts)) traj
         FROM raw GROUP BY mmsi)
 ) TO 'analytics_shard.parquet' (FORMAT PARQUET);
@@ -120,10 +121,10 @@ the 09:00–10:30 window.""")
 code("""duck(\"\"\"
 SELECT mmsi
 FROM read_parquet('analytics_shard.parquet')
-WHERE tmax >= TIMESTAMPTZ '2026-02-26 09:00:00+00'        -- temporal overlap
-  AND tmin <  TIMESTAMPTZ '2026-02-26 10:30:00+00'
-  AND xmax >= 4.5 AND xmin <= 5.1                          -- covering-column space prune
-  AND ymax >= 51.3 AND ymin <= 51.7
+WHERE traj_tspan.tmax >= TIMESTAMPTZ '2026-02-26 09:00:00+00'   -- temporal overlap
+  AND traj_tspan.tmin <  TIMESTAMPTZ '2026-02-26 10:30:00+00'
+  AND traj_bbox.xmax >= 4.5 AND traj_bbox.xmin <= 5.1           -- covering-column space prune
+  AND traj_bbox.ymax >= 51.3 AND traj_bbox.ymin <= 51.7
 ORDER BY mmsi
 \"\"\")""")
 

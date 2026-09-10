@@ -21,7 +21,7 @@ Two facts shape everything below.
   *prunable scalars derivable*, so Iceberg's existing min/max, partition, and
   manifest machinery does the work. That lever is the
   [covering columns](https://github.com/MobilityDB/MobilityLakehouse/blob/main/spec/covering-columns.md)
-  (GeoParquet 1.1 `covering.bbox`-aligned): manifest- and row-group-level
+  (the spatial one a GeoParquet bounding box column): manifest- and row-group-level
   pruning with no spatial-aware engine.
 - **Iceberg support is one generated contract, not N integrations.** The
   contract is injected once at the MEOS catalog; every binding and engine emits

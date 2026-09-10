@@ -47,9 +47,9 @@ groups before reading any value.
 COPY (
   SELECT entity_id,
          asBinary(traj)    AS traj,                  -- canonical value (BLOB)
-         Xmin(stbox(traj)) AS xmin, Xmax(stbox(traj)) AS xmax,
-         Ymin(stbox(traj)) AS ymin, Ymax(stbox(traj)) AS ymax,
-         Tmin(stbox(traj)) AS tmin, Tmax(stbox(traj)) AS tmax,
+         {'xmin': Xmin(stbox(traj)), 'ymin': Ymin(stbox(traj)),
+          'xmax': Xmax(stbox(traj)), 'ymax': Ymax(stbox(traj))} AS traj_bbox,
+         {'tmin': Tmin(stbox(traj)), 'tmax': Tmax(stbox(traj))} AS traj_tspan,
          SRID(traj)        AS srid,
          numInstants(traj) AS ping_count
   FROM trajectories
@@ -98,10 +98,10 @@ Partitions may be nested, e.g. `year=2026/month=02/h3cell=832830fffffffff/`.
 ```sql
 SELECT entity_id, asText(tgeompointFromBinary(traj))
 FROM read_parquet('lake/**/*.parquet')
-WHERE tmax >= TIMESTAMPTZ '2026-02-26 00:00:00+00'   -- time pruning
-  AND tmin <  TIMESTAMPTZ '2026-02-27 00:00:00+00'
-  AND xmax >= 4.0 AND xmin <= 5.0                     -- space pruning
-  AND ymax >= 51.0 AND ymin <= 52.0;
+WHERE traj_tspan.tmax >= TIMESTAMPTZ '2026-02-26 00:00:00+00'   -- time pruning
+  AND traj_tspan.tmin <  TIMESTAMPTZ '2026-02-27 00:00:00+00'
+  AND traj_bbox.xmax >= 4.0 AND traj_bbox.xmin <= 5.0            -- space pruning
+  AND traj_bbox.ymax >= 51.0 AND traj_bbox.ymin <= 52.0;
 ```
 
 The scalar predicates on the covering columns let the engine skip files and
@@ -153,19 +153,19 @@ ATTACH 'warehouse' AS lakehouse (TYPE iceberg, ENDPOINT 'http://polaris:8181/api
 CREATE TABLE lakehouse.mobility.trajectories AS
 SELECT entity_id,
        asBinary(traj)    AS traj,
-       Xmin(stbox(traj)) AS xmin, Xmax(stbox(traj)) AS xmax,
-       Ymin(stbox(traj)) AS ymin, Ymax(stbox(traj)) AS ymax,
-       Tmin(stbox(traj)) AS tmin, Tmax(stbox(traj)) AS tmax,
+       {'xmin': Xmin(stbox(traj)), 'ymin': Ymin(stbox(traj)),
+        'xmax': Xmax(stbox(traj)), 'ymax': Ymax(stbox(traj))} AS traj_bbox,
+       {'tmin': Tmin(stbox(traj)), 'tmax': Tmax(stbox(traj))} AS traj_tspan,
        SRID(traj)        AS srid
 FROM trajectories;
 
 -- Read: pruned by the covering columns, value reconstructed by MEOS
 SELECT entity_id, asText(tgeompointFromBinary(traj))
 FROM lakehouse.mobility.trajectories
-WHERE tmax >= TIMESTAMPTZ '2026-02-26 00:00:00+00'
-  AND tmin <  TIMESTAMPTZ '2026-02-27 00:00:00+00'
-  AND xmax >= 4.0 AND xmin <= 5.0
-  AND ymax >= 51.0 AND ymin <= 52.0;
+WHERE traj_tspan.tmax >= TIMESTAMPTZ '2026-02-26 00:00:00+00'
+  AND traj_tspan.tmin <  TIMESTAMPTZ '2026-02-27 00:00:00+00'
+  AND traj_bbox.xmax >= 4.0 AND traj_bbox.xmin <= 5.0
+  AND traj_bbox.ymax >= 51.0 AND traj_bbox.ymin <= 52.0;
 ```
 
 The same table reads from Spark, Trino, Flink, or PyIceberg over the REST

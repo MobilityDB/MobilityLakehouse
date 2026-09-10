@@ -19,11 +19,19 @@ space-and-time predicate prunes whole files (Iceberg manifests) and row groups
 
 ## The columns
 
+Each covering is a struct column at the root of the schema, named after its
+temporal column:
+
 | Temporal class | Box | Covering columns |
 |---|---|---|
-| spatial (`tgeompoint`, `tgeogpoint`, `tgeometry`, `tgeography`, `tcbuffer`, `tnpoint`, `tpose`, `trgeometry`) | `STBOX` | `xmin xmax ymin ymax` (+ `zmin zmax` for 3D) · `tmin tmax` · `srid` |
-| numeric (`tint`, `tfloat`, `tbigint`) | `TBOX` | `vmin vmax` · `tmin tmax` |
-| time-only (`tbool`, `ttext`) | — | `tmin tmax` |
+| spatial (`tgeompoint`, `tgeogpoint`, `tgeometry`, `tgeography`, `tcbuffer`, `tnpoint`, `tpose`, `trgeometry`) | `STBOX` | `<col>_bbox` {`xmin`, `ymin`, [`zmin`,] `xmax`, `ymax`[, `zmax`]} · `<col>_tspan` {`tmin`, `tmax`} · `srid` |
+| numeric (`tint`, `tfloat`, `tbigint`) | `TBOX` | `<col>_vspan` {`vmin`, `vmax`} · `<col>_tspan` {`tmin`, `tmax`} |
+| time-only (`tbool`, `ttext`) | — | `<col>_tspan` {`tmin`, `tmax`} |
+
+`<col>_bbox` is a GeoParquet bounding box column: its fields are `DOUBLE`, in
+the order shown, it has the repetition of its temporal column, and it holds a
+value exactly when the temporal column does. `<col>_tspan` holds `TIMESTAMP`
+bounds adjusted to UTC, and `<col>_vspan` bounds of the base type.
 
 The value column stays the lossless source of truth; the covering columns are a
 denormalised derivation of the value's bounding box.
@@ -35,29 +43,33 @@ accessors. In MobilityDuck:
 
 ```sql
 SELECT
-  asBinary(traj)    AS traj,                       -- canonical value (BLOB)
-  Xmin(stbox(traj)) AS xmin, Xmax(stbox(traj)) AS xmax,
-  Ymin(stbox(traj)) AS ymin, Ymax(stbox(traj)) AS ymax,
-  Tmin(stbox(traj)) AS tmin, Tmax(stbox(traj)) AS tmax,
-  SRID(traj)        AS srid
+  asBinary(traj) AS traj,                           -- canonical value (BLOB)
+  {'xmin': Xmin(stbox(traj)), 'ymin': Ymin(stbox(traj)),
+   'xmax': Xmax(stbox(traj)), 'ymax': Ymax(stbox(traj))} AS traj_bbox,
+  {'tmin': Tmin(stbox(traj)), 'tmax': Tmax(stbox(traj))} AS traj_tspan,
+  SRID(traj) AS srid
 FROM trajectories;
 ```
 
 ## Pruning with them
 
-A bounding-box predicate is a scalar AND-chain over the covering columns — the
-engine evaluates it against column statistics and skips non-intersecting files
-and row groups:
+A bounding-box predicate is a scalar AND-chain over the fields of the covering
+columns — the engine evaluates it against their statistics and skips
+non-intersecting files and row groups:
 
 ```sql
 SELECT entity_id, asText(tgeompointFromBinary(traj))
 FROM read_parquet('lake/**/*.parquet')
-WHERE tmax >= TIMESTAMPTZ '2026-02-26' AND tmin < TIMESTAMPTZ '2026-02-27'
-  AND xmax >= 4.0 AND xmin <= 5.0 AND ymax >= 51.0 AND ymin <= 52.0;
+WHERE traj_tspan.tmax >= TIMESTAMPTZ '2026-02-26'
+  AND traj_tspan.tmin <  TIMESTAMPTZ '2026-02-27'
+  AND traj_bbox.xmax >= 4.0 AND traj_bbox.xmin <= 5.0
+  AND traj_bbox.ymax >= 51.0 AND traj_bbox.ymin <= 52.0;
 ```
 
-Aligned with GeoParquet 1.1 `covering.bbox`: the same columns serve Parquet
-row-group pruning and Iceberg manifest-level file pruning.
+`<col>_bbox` is exactly what GeoParquet declares under `covering.bbox`, so a
+reader that prunes on a GeoParquet bounding box covering prunes on it the same
+way; the same field statistics serve Parquet row-group pruning and Iceberg
+manifest-level file pruning.
 
 The predicate is a plain conjunction on every row, because a MobilityDB box
 always satisfies `xmin <= xmax`. A box accessor takes the minimum and maximum of
