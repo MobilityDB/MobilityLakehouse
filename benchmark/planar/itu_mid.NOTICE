@@ -1,0 +1,10 @@
+itu_mid.csv is derived from mids.json of https://github.com/michaeljfazio/MIDs at commit
+ebcc3c8fbb7ada9df11f857e78db2400f1e08155, licensed under the Apache License, Version 2.0, whose
+text is itu_mid.LICENSE. The derivation converts the JSON to CSV: one row per Maritime
+Identification Digits code, codes ascending, holding the code and the fourth field of its entry,
+the name of the administration the code is allocated to. This command reproduces itu_mid.csv byte
+for byte:
+
+  curl -sL https://raw.githubusercontent.com/michaeljfazio/MIDs/ebcc3c8fbb7ada9df11f857e78db2400f1e08155/mids.json \
+    | python3 -c 'import csv, json, sys; d = json.load(sys.stdin); w = csv.writer(sys.stdout, lineterminator="\n"); w.writerow(["mid", "allocated_to"]); [w.writerow([k, d[k][3]]) for k in sorted(d, key=int)]' \
+    > itu_mid.csv
