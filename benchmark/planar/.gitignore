@@ -1,0 +1,2 @@
+# The machine's MobilityDuck build, which duckdb.sh runs when DUCKDB_ENGINE is unset
+engine.path
