@@ -10,7 +10,7 @@
 #               cell y, start time) key is below the row before it.
 # Exits non-zero on any failure.
 #
-#   RUN=~/ais-lakehouse/stage/planar/2026-01-01_2026-02-01 ./92_check_layouts.sh
+#   RUN=data/stage/planar/2026-01-01_2026-02-01 benchmark/planar/92_check_layouts.sh
 #
 # Environment: RUN (required); DUCKDB; CHECK_MEMORY (8GB).
 set -euo pipefail

@@ -24,8 +24,8 @@
 #                  A study covers a stated period while a download directory holds whatever
 #                  else has been fetched into it, so naming the period is what keeps a stray
 #                  day out of the zone and the dataset the size the paper says it is.
-#   --out    DIR   raw-zone Parquet destination            (default: $HOME/ais-lakehouse/raw)
-#   --stage  DIR   scratch for the decompressed CSV        (default: $HOME/ais-lakehouse/stage)
+#   --out    DIR   raw-zone Parquet destination            (default: the repository's data/raw)
+#   --stage  DIR   scratch for the decompressed CSV        (default: the repository's data/stage)
 #   --log    FILE  run log                                 (default: <out>/../log/raw_zone.log)
 #   --days   N     stop after N days, for a smoke run      (default: all)
 #   --duckdb PATH  duckdb binary                           (default: duckdb from PATH)
@@ -34,11 +34,13 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SQL="${SCRIPT_DIR}/raw_zone.sql"
+# The repository's data directory, which holds the DMA archives and everything built from them.
+DATA="$(cd "${SCRIPT_DIR}/../.." && pwd)/data"
 
 ZIPS=""
 PATTERN="aisdk-*.zip"
-OUT="${HOME}/ais-lakehouse/raw"
-STAGE="${HOME}/ais-lakehouse/stage"
+OUT="${DATA}/raw"
+STAGE="${DATA}/stage"
 LOG=""
 DAYS=0
 DUCKDB="${DUCKDB:-duckdb}"

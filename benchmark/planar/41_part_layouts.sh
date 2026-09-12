@@ -17,15 +17,15 @@
 # log, and the PART line of log/planar-part.tsv); SPAN_COUNT=1 runs the splits and that count
 # alone, writing no layout file, for a run whose layouts already exist (log/planar-span.tsv).
 #
-#   RUN=~/ais-lakehouse/stage/planar/2026-01-01_2026-02-01 ./41_part_layouts.sh [day ...]
+#   RUN=data/stage/planar/2026-01-01_2026-02-01 benchmark/planar/41_part_layouts.sh [day ...]
 #
-# Environment: RUN (required); ROOT ($HOME/ais-lakehouse), the tree holding log/ and tmp/; DUCKDB
-# (a MobilityDuck whose timeSplit takes a column); LAYERS ("L1 L2 L3 L4", "L2 L3 L4" under
+# Environment: RUN (required); ROOT (the repository's data/), the tree holding log/ and tmp/;
+# DUCKDB (a MobilityDuck whose timeSplit takes a column); LAYERS ("L1 L2 L3 L4", "L2 L3 L4" under
 # SPAN_COUNT); LAYOUT_MEMORY (12GB); LAYOUT_THREADS (4); CELL_SIZE (50000); ADAPTIVE_NSEG (64);
 # TIME_BIN_SECONDS (3600); SPAN_COUNT (unset).
 set -euo pipefail
 
-ROOT=${ROOT:-$HOME/ais-lakehouse}
+ROOT=${ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)/data}
 RUN=${RUN:?RUN is required}
 L0="$RUN/L0"
 OUT="$RUN/layouts_daily"
