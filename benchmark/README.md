@@ -2,8 +2,8 @@
 
 The experiments of the lakehouse paper run on the AIS reports the Danish Maritime Authority (DMA)
 publishes, one archive per day. The scripts here take a period of those archives to the L0 base
-layer of TemporalParquet trips in EPSG:25832 and to the eleven layouts the paper compares, and
-check every layout before a figure is read from it.
+layer of TemporalParquet trips in EPSG:25832 and to the eleven layouts the paper compares, check
+every layout before a figure is read from it, and answer and time the paper's ten queries on each.
 
 ## The data
 
@@ -26,7 +26,8 @@ in the raw zone is skipped, so an interrupted download resumes where it stopped.
 - A DuckDB shell carrying the MobilityDuck extension, built from
   <https://github.com/MobilityDB/MobilityDuck>, named by `DUCKDB_ENGINE` or by a local file
   `planar/engine.path` holding its path (git ignores it).
-- `bash`, `curl` and `unzip`.
+- `bash`, `curl`, `unzip`, `python3` (its standard library only) and GNU `time` at
+  `/usr/bin/time`, which the query harness reads each engine's peak memory from.
 - Disk: for the month, 17.3 GB of archives, 11 GB of raw zone, and in the run directory 9.0 GB of
   vessel buckets, 9.2 GB of clean points, 8.0 GB of segments, 3.3 GB of L0, 23.0 GB of daily
   layouts and 12.6 GB of compact layouts.
@@ -40,8 +41,25 @@ benchmark/reproduce.sh 2026-01-01 2026-01-31
 runs, for the days given, both included, the raw zone of every day not yet in it
 (`ingest/raw_zone.sh`), the cleaning, segmentation and L0 (`planar/run_clean.sh`), the layouts
 (`planar/40_order_layouts.sh`, `planar/41_part_layouts.sh`, `planar/42_compact_layouts.sh`) and
-their checks (`planar/92_check_layouts.sh`). Without arguments it runs the paper's month. It stops
-and names the download command when a day of the period is missing. The run lands in
-`data/stage/planar/<FROM>_<TO + 1 day>/`: `L0/`, `layouts_daily/` (L0X, L0Z, L0H, L1 to L4) and
-`layout_compact/` (L1s to L4s). `STEPS` selects the steps an invocation runs, for instance
-`STEPS="layouts check"` to rebuild the layouts of a run whose L0 exists.
+their checks (`planar/92_check_layouts.sh`), then the ten queries (`planar/queries/`) on every
+layout and window. Without arguments it runs the paper's month. It stops and names the download
+command when a day of the period is missing.
+
+The run lands in `data/stage/planar/<FROM>_<TO + 1 day>/`: `L0/`, `layouts_daily/` (L0X, L0Z, L0H,
+L1 to L4) and `layout_compact/` (L1s to L4s). The results land in
+`data/results/planar/<FROM>_<TO + 1 day>/`:
+
+- `answers.csv`, the answer of each query in each window, read from L0 (`planar/72_answers.py`);
+- `recall.csv`, each layout's count over L0's for the counting queries, per window, which reads
+  1.0000 wherever L0's answer is not zero;
+- `query-runtime-summary.csv`, per layout, window and query, the trimmed mean of five warm runs,
+  its 95% interval, the peak memory, and whether the runs agree and match L0
+  (`planar/71_summarize.py`).
+
+The windows are the paper's (`planar/windows_25832.csv`, written by `planar/45_windows.sql`): four
+regions crossed with an hour, a day and a week from 2026-01-15 08:00 UTC and the month of January.
+A period that does not contain a window answers it over no data.
+
+`STEPS` selects the steps an invocation runs, for instance `STEPS="layouts check"` to rebuild the
+layouts of a run whose L0 exists. `STEPS=cold` adds the timing after dropping the page cache before
+every run, which needs passwordless `sudo tee /proc/sys/vm/drop_caches`.
