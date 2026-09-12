@@ -13,13 +13,13 @@
 # written for one partition keeps its order. Each COPY reads only its partition's daily files,
 # since the filter on the Hive key prunes the others by path.
 #
-#   RUN=~/ais-lakehouse/stage/planar/2026-01-01_2026-02-01 ./42_compact_layouts.sh [L1 L2 L3 L4]
+#   RUN=data/stage/planar/2026-01-01_2026-02-01 benchmark/planar/42_compact_layouts.sh [L1 L2 L3 L4]
 #
-# Environment: RUN (required); ROOT ($HOME/ais-lakehouse), the tree holding log/ and tmp/; DUCKDB;
-# LAYOUT_MEMORY (12GB); LAYOUT_THREADS (4).
+# Environment: RUN (required); ROOT (the repository's data/), the tree holding log/ and tmp/;
+# DUCKDB; LAYOUT_MEMORY (12GB); LAYOUT_THREADS (4).
 set -euo pipefail
 
-ROOT=${ROOT:-$HOME/ais-lakehouse}
+ROOT=${ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)/data}
 RUN=${RUN:?RUN is required}
 # The engine is $DUCKDB when set, else the one engine.path names; every call goes through
 # duckdb.sh, which starts it with the arrow lambda syntax disabled.

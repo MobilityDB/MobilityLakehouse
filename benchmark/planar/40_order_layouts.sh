@@ -10,15 +10,15 @@
 # ordering precision and never correctness. ROW GROUPS HOLD 2048 ROWS, the smallest DuckDB
 # writes: a request for 512 or 1024 also yields 2048.
 #
-#   RUN=~/ais-lakehouse/stage/planar/2026-01-01_2026-02-01 ./40_order_layouts.sh [day ...]
+#   RUN=data/stage/planar/2026-01-01_2026-02-01 benchmark/planar/40_order_layouts.sh [day ...]
 #
-# Environment: RUN (the run_clean.sh output directory); ROOT ($HOME/ais-lakehouse), the tree
+# Environment: RUN (the run_clean.sh output directory); ROOT (the repository's data/), the tree
 # holding log/ and tmp/; DUCKDB; LAYOUT_MEMORY (8GB). duckdb.sh and the macros are read from the
 # directory holding this script.
 set -euo pipefail
 
-ROOT=${ROOT:-$HOME/ais-lakehouse}
 P="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT=${ROOT:-$(cd "$P/../.." && pwd)/data}
 RUN=${RUN:?RUN is required}
 L0="$RUN/L0"
 OUT="$RUN/layouts_daily"

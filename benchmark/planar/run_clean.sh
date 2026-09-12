@@ -10,14 +10,14 @@
 #
 #   LO=2026-01-20 HI=2026-01-22 ./run_clean.sh
 #
-# Environment: LO, HI (required); ROOT ($HOME/ais-lakehouse), the tree holding raw/ (the raw zone
-# raw_zone.sh writes), stage/, log/ and tmp/; NBUCKETS (16); OUT; DUCKDB; MEM (12GB); STAGES
+# Environment: LO, HI (required); ROOT (the repository's data/), the tree holding raw/ (the raw
+# zone raw_zone.sh writes), stage/, log/ and tmp/; NBUCKETS (16); OUT; DUCKDB; MEM (12GB); STAGES
 # ("1 2 3"), the stages this invocation runs, each reading what the stage before it wrote. The SQL
 # files and duckdb.sh are read from the directory holding this script.
 set -euo pipefail
 
-ROOT=${ROOT:-$HOME/ais-lakehouse}
 P="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT=${ROOT:-$(cd "$P/../.." && pwd)/data}
 LO=${LO:?LO is required}
 HI=${HI:?HI is required}
 NB=${NBUCKETS:-16}
