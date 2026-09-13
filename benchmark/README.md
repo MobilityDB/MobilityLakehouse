@@ -43,9 +43,12 @@ runs, for the days given, both included, the raw zone of every day not yet in it
 (`planar/40_order_layouts.sh`, `planar/41_part_layouts.sh`, `planar/42_compact_layouts.sh`) and
 their checks (`planar/92_check_layouts.sh`), the sensitivity of the spatial layouts to their
 region cell (`planar/54_cell_sensitivity.sql`), the table of the cleaned segments by type
-(`planar/73_segment_table.sql`), then the ten queries (`planar/queries/`) on every layout and
-window. Without arguments it runs the paper's month. It stops and names the download command when a
-day of the period is missing.
+(`planar/73_segment_table.sql`), the vessels each layout answers each window with against L0's
+(`planar/51_verify_answers.sh`), what the row-group statistics of each layout let a window skip
+(`planar/50_query_layouts.sh`) and the storage each layout takes (`planar/53_storage.py`), then the
+ten queries (`planar/queries/`) on every layout and window. Without arguments it runs the paper's
+month. It stops and names the download command when a day of the period is missing, and stops at
+the answer gate when a layout's vessels differ from L0's.
 
 The run lands in `data/stage/planar/<FROM>_<TO + 1 day>/`: `L0/`, `layouts_daily/` (L0X, L0Z, L0H,
 L1 to L4) and `layout_compact/` (L1s to L4s). The results land in
@@ -57,6 +60,10 @@ L1 to L4) and `layout_compact/` (L1s to L4s). The results land in
   open-water boxes;
 - `segment-table.txt`, per segment type the rows, vessels, median and mean duration, mean instants
   and mean length of L0, then all rows over all vessels;
+- `layout-answers.csv`, the vessels each layout answers per window, which equal L0's in every row;
+- `layout-pruning.csv`, per layout and window the row groups, files, rows and bytes the window
+  admits and their share of the layout;
+- `storage.csv`, per layout the files, rows, rows per row of L0 and bytes;
 - `answers.csv`, the answer of each query in each window, read from L0 (`planar/72_answers.py`);
 - `recall.csv`, each layout's count over L0's for the counting queries, per window, which reads
   1.0000 wherever L0's answer is not zero;
