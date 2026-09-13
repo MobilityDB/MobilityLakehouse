@@ -41,7 +41,8 @@ benchmark/reproduce.sh 2026-01-01 2026-01-31
 runs, for the days given, both included, the raw zone of every day not yet in it
 (`ingest/raw_zone.sh`), the cleaning, segmentation and L0 (`planar/run_clean.sh`), the layouts
 (`planar/40_order_layouts.sh`, `planar/41_part_layouts.sh`, `planar/42_compact_layouts.sh`) and
-their checks (`planar/92_check_layouts.sh`), then the ten queries (`planar/queries/`) on every
+their checks (`planar/92_check_layouts.sh`), the sensitivity of the spatial layouts to their
+region cell (`planar/54_cell_sensitivity.sql`), then the ten queries (`planar/queries/`) on every
 layout and window. Without arguments it runs the paper's month. It stops and names the download
 command when a day of the period is missing.
 
@@ -49,6 +50,10 @@ The run lands in `data/stage/planar/<FROM>_<TO + 1 day>/`: `L0/`, `layouts_daily
 L1 to L4) and `layout_compact/` (L1s to L4s). The results land in
 `data/results/planar/<FROM>_<TO + 1 day>/`:
 
+- `cell_size.csv` and `density.csv`, computed from L0's bounds alone: per region cell size, the
+  files a compact spatial layout writes, the cells per segment and each query region's share of
+  the stored bytes; at the layouts' 50 km cell, that share for the query regions and for four
+  open-water boxes;
 - `answers.csv`, the answer of each query in each window, read from L0 (`planar/72_answers.py`);
 - `recall.csv`, each layout's count over L0's for the counting queries, per window, which reads
   1.0000 wherever L0's answer is not zero;
