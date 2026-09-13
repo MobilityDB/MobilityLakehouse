@@ -20,16 +20,17 @@
 #
 # Environment: DUCKDB_ENGINE, a DuckDB shell carrying MobilityDuck (else the one
 # planar/engine.path names); ROOT (the repository's data/), which holds the archives and everything
-# built from them; STEPS ("ingest clean layouts check sensitivity queries timing"), the steps this
-# invocation runs, each reading what the step before it wrote; `cold` is a further step, the timing
-# after dropping the page cache before every run, which needs `sudo -n tee /proc/sys/vm/drop_caches`.
+# built from them; STEPS ("ingest clean layouts check sensitivity segments queries timing"), the
+# steps this invocation runs, each reading what the step before it wrote; `cold` is a further step,
+# the timing after dropping the page cache before every run, which needs
+# `sudo -n tee /proc/sys/vm/drop_caches`.
 set -euo pipefail
 
 B="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 FROM=${1:-2026-01-01}
 TO=${2:-2026-01-31}
 export ROOT=${ROOT:-$(cd "$B/.." && pwd)/data}
-STEPS=${STEPS:-"ingest clean layouts check sensitivity queries timing"}
+STEPS=${STEPS:-"ingest clean layouts check sensitivity segments queries timing"}
 
 want() { case " $STEPS " in *" $1 "*) return 0;; *) return 1;; esac; }
 # The day after $1, with GNU date or, on macOS, BSD date.
@@ -84,6 +85,11 @@ if want sensitivity; then
   (cd "$OUT" && "$B/planar/duckdb.sh" -cmd "SET VARIABLE out = '$RUN'" \
     -cmd "SET VARIABLE windows = '$B/planar/windows_25832.csv'" \
     -c ".read $B/planar/54_cell_sensitivity.sql")
+fi
+if want segments; then
+  mkdir -p "$OUT"
+  "$B/planar/duckdb.sh" -cmd "SET VARIABLE out = '$RUN'" -c ".read $B/planar/73_segment_table.sql" \
+    > "$OUT/segment-table.txt"
 fi
 # 70_queries.py appends to QUERY_OUT, so each step starts its file afresh.
 if want queries; then
