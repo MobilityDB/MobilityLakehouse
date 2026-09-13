@@ -38,6 +38,15 @@ in the raw zone is skipped, so an interrupted download resumes where it stopped.
 - For the answers of MobilityDB, a PostgreSQL server carrying MobilityDB, PostGIS and
   [pg_parquet](https://github.com/CrunchyData/pg_parquet), `psql`, and a role that may read the
   server's files, named by the usual `PGHOST`, `PGPORT`, `PGDATABASE` and `PGUSER`.
+- For the answers of MobilitySpark, a JDK 21, Maven, and a
+  [MobilitySpark](https://github.com/MobilityDB/MobilitySpark) checkout built by its
+  `tools/refresh-from-master.sh`, which builds MEOS, JMEOS and MobilitySpark from MobilityDB master,
+  named by `MOBILITYSPARK`:
+
+  ```bash
+  git clone https://github.com/MobilityDB/MobilitySpark.git && MobilitySpark/tools/refresh-from-master.sh
+  export MOBILITYSPARK=$PWD/MobilitySpark
+  ```
 - For the cell-cover soundness, a MEOS install built with H3 from MobilityDB at the commit
   MobilityDuck builds its MEOS from (`_MEOS_REF` in MobilityDuck's `vcpkg_ports/meos/portfile.cmake`),
   named by `MEOS_PREFIX`, and the H3 static archive that MEOS build links (`H3_INCLUDE_DIR`,
@@ -121,6 +130,8 @@ A period that does not contain a window answers it over no data.
 `STEPS=mobilitydb` answers the ten queries with MobilityDB in PostgreSQL over the run's L0, which
 it copies into a table with pg_parquet, and writes `mobilitydb-answers.csv`: per window and query
 the answer, L0's answer from `answers.csv`, and whether the two state the same numbers.
+`STEPS=mobilityspark` answers them with MobilitySpark in Apache Spark over the run's L0, which Spark
+reads in place, and writes `mobilityspark-answers.csv` in the same form.
 
 `STEPS` selects the steps an invocation runs, for instance `STEPS="layouts check"` to rebuild the
 layouts of a run whose L0 exists. `STEPS=cold` adds the timing after dropping the page cache before
