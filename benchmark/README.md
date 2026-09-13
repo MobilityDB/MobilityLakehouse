@@ -35,6 +35,9 @@ in the raw zone is skipped, so an interrupted download resumes where it stopped.
   python3 -m venv .venv && .venv/bin/pip install -r benchmark/planar/requirements.txt
   export PYTHON=$PWD/.venv/bin/python
   ```
+- For the answers of MobilityDB, a PostgreSQL server carrying MobilityDB, PostGIS and
+  [pg_parquet](https://github.com/CrunchyData/pg_parquet), `psql`, and a role that may read the
+  server's files, named by the usual `PGHOST`, `PGPORT`, `PGDATABASE` and `PGUSER`.
 - Disk: for the month, 17.3 GB of archives, 11 GB of raw zone, and in the run directory 9.0 GB of
   vessel buckets, 9.2 GB of clean points, 8.0 GB of segments, 3.3 GB of L0, 23.0 GB of daily
   layouts and 12.6 GB of compact layouts.
@@ -83,6 +86,10 @@ L1 to L4) and `layout_compact/` (L1s to L4s). The results land in
 The windows are the paper's (`planar/windows_25832.csv`, written by `planar/45_windows.sql`): four
 regions crossed with an hour, a day and a week from 2026-01-15 08:00 UTC and the month of January.
 A period that does not contain a window answers it over no data.
+
+`STEPS=mobilitydb` answers the ten queries with MobilityDB in PostgreSQL over the run's L0, which
+it copies into a table with pg_parquet, and writes `mobilitydb-answers.csv`: per window and query
+the answer, L0's answer from `answers.csv`, and whether the two state the same numbers.
 
 `STEPS` selects the steps an invocation runs, for instance `STEPS="layouts check"` to rebuild the
 layouts of a run whose L0 exists. `STEPS=cold` adds the timing after dropping the page cache before
