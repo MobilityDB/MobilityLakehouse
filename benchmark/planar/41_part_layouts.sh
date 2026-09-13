@@ -17,6 +17,10 @@
 # log, and the PART line of log/planar-part.tsv); SPAN_COUNT=1 runs the splits and that count
 # alone, writing no layout file, for a run whose layouts already exist (log/planar-span.tsv).
 #
+# A day's statements run under DuckDB's timer, each layer's after a marker naming it, so the PART
+# and SPAN lines also carry each layer's own seconds, the loading of the day the layers share
+# counted as setup.
+#
 #   RUN=data/stage/planar/2026-01-01_2026-02-01 benchmark/planar/41_part_layouts.sh [day ...]
 #
 # Environment: RUN (required); ROOT (the repository's data/), the tree holding log/ and tmp/;
@@ -70,8 +74,23 @@ KEEP="Tmin(b)::TIMESTAMP >= ptmin AND Tmax(b)::TIMESTAMP <= ptmax"
 discard() {
   echo "SELECT 'DISCARD $1 ' || count(*) FILTER (WHERE NOT ($KEEP)) || ' of ' || count(*) AS discard FROM $2;"
 }
+# The marker the statements of layer $1 follow in the day's log.
+marker() { echo "SELECT 'LAYER $1' AS layer;"; }
 # A statement that writes a layout, passed through on a build and dropped under SPAN_COUNT.
 build_only() { if [ -z "$SPAN_COUNT" ]; then cat; else cat > /dev/null; fi; }
+
+# Each layer's seconds in the day's log $1: the timer's real time of every statement after the
+# layer's marker, the statements before the first marker counted as setup.
+layer_seconds() {
+  awk -v cur=setup '
+    /LAYER L[0-9]/ { match($0, /LAYER L[0-9]/); cur = substr($0, RSTART + 6, 2) }
+    /^Run Time \(s\): real / { t[cur] += $5 }
+    END {
+      n = split("setup L1 L2 L3 L4", k, " ")
+      for (i = 1; i <= n; i++)
+        if (k[i] in t) printf "%s%s=%.1f", (s++ ? " " : ""), k[i], t[k[i]]
+    }' "$1"
+}
 
 build_one() {
   local day="$1"
@@ -88,6 +107,7 @@ build_one() {
   fi
   {
     cat <<HDR
+.timer on
 LOAD spatial;
 SET memory_limit = '$MEM';
 SET threads = $THREADS;
@@ -103,13 +123,17 @@ HDR
 
     # Each table is dropped once its last reader has run, so a layer is built beside the day's
     # moving and stationary rows only, never beside the pieces of the layers before it.
-    want L1 && build_only <<HDR || true
+    if want L1; then
+      marker L1
+      build_only <<HDR
 COPY (SELECT *, (hash(MMSI) % 16)::INTEGER AS shard FROM src)
   TO '$OUT/L1/day-$day' (FORMAT parquet, PARTITION_BY (shard), COMPRESSION zstd, OVERWRITE_OR_IGNORE);
 HDR
+    fi
     echo "DROP TABLE src;"
 
     if want L2; then
+      marker L2
       cat <<HDR
 CREATE OR REPLACE TEMP TABLE l2 AS
 SELECT m.MMSI, m.ship_type, m.segment_type, m.dt, m.ptmin, m.ptmax, s.tpoint AS p,
@@ -135,6 +159,7 @@ HDR
     # over the boxes carries the whole trajectory on every box row, which holds the trajectory
     # once per box, quadratic in its length (12 GiB on a 130 MiB day).
     if want L3; then
+      marker L3
       cat <<HDR
 CREATE OR REPLACE TEMP TABLE l3 AS
 WITH pieces AS (
@@ -157,6 +182,7 @@ HDR
     fi
 
     if want L4; then
+      marker L4
       cat <<HDR
 CREATE OR REPLACE TEMP TABLE l4 AS
 SELECT m.MMSI, m.ship_type, m.segment_type, m.dt, m.ptmin, m.ptmax, s.tgeompoint AS p,
@@ -177,21 +203,22 @@ HDR
     fi
   } > "$script"
 
-  local t0 counts="" discards
+  local t0 counts="" discards seconds
   t0=$(date +%s)
   "$DUCKDB" -unsigned -c ".read $script" > "$RUN/gen/$tag-$day.log" 2>&1
   discards=$({ grep -o 'DISCARD L[0-9] [0-9]* of [0-9]*' "$RUN/gen/$tag-$day.log" || true; } \
     | cut -d' ' -f2- | paste -sd' ' -)
+  seconds=$(layer_seconds "$RUN/gen/$tag-$day.log")
   if [ -n "$SPAN_COUNT" ]; then
-    printf 'SPAN\t%s\t%ss\tdiscarded %s\n' "$day" "$(( $(date +%s) - t0 ))" "$discards" \
-      | tee -a "$ROOT/log/planar-span.tsv"
+    printf 'SPAN\t%s\t%ss\tdiscarded %s\tseconds %s\n' "$day" "$(( $(date +%s) - t0 ))" \
+      "$discards" "$seconds" | tee -a "$ROOT/log/planar-span.tsv"
     return
   fi
   for L in $LAYERS; do
     counts="$counts $L=$(find "$OUT/$L/day-$day" -name '*.parquet' 2>/dev/null | wc -l)"
   done
-  printf 'PART\t%s\t%ss\t%s files\tdiscarded %s\n' "$day" "$(( $(date +%s) - t0 ))" "$counts" \
-    "$discards" | tee -a "$ROOT/log/planar-part.tsv"
+  printf 'PART\t%s\t%ss\t%s files\tdiscarded %s\tseconds %s\n' "$day" "$(( $(date +%s) - t0 ))" \
+    "$counts" "$discards" "$seconds" | tee -a "$ROOT/log/planar-part.tsv"
 }
 
 if [ "$#" -gt 0 ]; then
