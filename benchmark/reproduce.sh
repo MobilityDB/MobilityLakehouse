@@ -31,7 +31,10 @@
 # after dropping the page cache before every run, which needs `sudo -n tee /proc/sys/vm/drop_caches`;
 # `mobilitydb` another, the ten queries answered by MobilityDB in PostgreSQL over L0 and compared
 # with L0's answers (planar/75_mobilitydb.py), which needs a PostgreSQL server carrying MobilityDB,
-# PostGIS and pg_parquet, named by PGHOST, PGPORT, PGDATABASE and PGUSER; PYTHON (python3), the
+# PostGIS and pg_parquet, named by PGHOST, PGPORT, PGDATABASE and PGUSER; `mobilityspark` another,
+# the ten queries answered by MobilitySpark in Apache Spark over L0 and compared with L0's answers
+# (planar/76_mobilityspark.py), which needs a JDK, Maven and MOBILITYSPARK, a MobilitySpark
+# checkout built by its tools/refresh-from-master.sh; PYTHON (python3), the
 # interpreter carrying the packages of planar/requirements.txt, which the catalogs step registers
 # the layouts with and the catalog-pruning step reads the Iceberg catalog with; MEOS_PREFIX, the
 # MEOS install built with H3 that the soundness step builds the cell-cover harness against.
@@ -73,6 +76,11 @@ fi
 if want soundness && [[ ! -x "$B/planar/cellcover/cellcover" && -z "${MEOS_PREFIX:-}" ]]; then
   echo "reproduce.sh: the soundness step builds planar/cellcover against MEOS_PREFIX, a MEOS" \
        "install built with H3; set it, or leave soundness out of STEPS" >&2
+  exit 2
+fi
+if want mobilityspark && [[ -z "${MOBILITYSPARK:-}" ]]; then
+  echo "reproduce.sh: the mobilityspark step runs on MOBILITYSPARK, a MobilitySpark checkout" \
+       "built by its tools/refresh-from-master.sh; set it, or leave mobilityspark out of STEPS" >&2
   exit 2
 fi
 
@@ -196,6 +204,11 @@ fi
 if want mobilitydb; then
   mkdir -p "$OUT"
   MOBILITYDB_OUT="$OUT/mobilitydb-answers.csv" python3 "$B/planar/75_mobilitydb.py" \
+    --answers "$OUT/answers.csv"
+fi
+if want mobilityspark; then
+  mkdir -p "$OUT"
+  MOBILITYSPARK_OUT="$OUT/mobilityspark-answers.csv" python3 "$B/planar/76_mobilityspark.py" \
     --answers "$OUT/answers.csv"
 fi
 if want figures; then
