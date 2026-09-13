@@ -26,22 +26,21 @@
 # Environment: DUCKDB_ENGINE, a DuckDB shell carrying MobilityDuck (else the one
 # planar/engine.path names); ROOT (the repository's data/), which holds the archives and everything
 # built from them; STEPS ("ingest clean layouts check sensitivity segments answers pruning storage
-# catalogs catalog-pruning queries timing figures"), the steps this invocation runs, each reading
-# what the step before it wrote; `cold` is a further step, the timing after dropping the page cache
-# before every run, which needs `sudo -n tee /proc/sys/vm/drop_caches`; `catalog-timing` is
-# another, the ten queries timed through each catalog; `mobilitydb` another, the ten queries
-# answered by MobilityDB in PostgreSQL over L0 and compared with L0's answers
-# (planar/75_mobilitydb.py), which needs a PostgreSQL server carrying MobilityDB, PostGIS and
-# pg_parquet, named by PGHOST, PGPORT, PGDATABASE and PGUSER; PYTHON (python3), the interpreter
-# carrying the packages of planar/requirements.txt, which the catalogs step registers the layouts
-# with and the catalog-pruning step reads the Iceberg catalog with.
+# catalogs catalog-pruning queries timing catalog-timing figures"), the steps this invocation runs,
+# each reading what the step before it wrote; `cold` is a further step, the timing after dropping
+# the page cache before every run, which needs `sudo -n tee /proc/sys/vm/drop_caches`;
+# `mobilitydb` another, the ten queries answered by MobilityDB in PostgreSQL over L0 and compared
+# with L0's answers (planar/75_mobilitydb.py), which needs a PostgreSQL server carrying MobilityDB,
+# PostGIS and pg_parquet, named by PGHOST, PGPORT, PGDATABASE and PGUSER; PYTHON (python3), the
+# interpreter carrying the packages of planar/requirements.txt, which the catalogs step registers
+# the layouts with and the catalog-pruning step reads the Iceberg catalog with.
 set -euo pipefail
 
 B="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 FROM=${1:-2026-01-01}
 TO=${2:-2026-01-31}
 export ROOT=${ROOT:-$(cd "$B/.." && pwd)/data}
-STEPS=${STEPS:-"ingest clean layouts check sensitivity segments answers pruning storage catalogs catalog-pruning queries timing figures"}
+STEPS=${STEPS:-"ingest clean layouts check sensitivity segments answers pruning storage catalogs catalog-pruning queries timing catalog-timing figures"}
 LAYOUTS="L0 L0X L0Z L0H L1 L2 L3 L4 L1s L2s L3s L4s"
 
 want() { case " $STEPS " in *" $1 "*) return 0;; *) return 1;; esac; }

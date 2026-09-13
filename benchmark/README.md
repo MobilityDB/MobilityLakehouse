@@ -59,8 +59,9 @@ region cell (`planar/54_cell_sensitivity.sql`), the table of the cleaned segment
 registration of every layout as an Iceberg table in the REST catalog over MinIO
 (`planar/80_register.py`) and as a DuckLake table (`planar/81_register_ducklake.sh`), what the two
 catalogs let each window skip at the file level (`planar/52_catalog_pruning.py`), then the ten
-queries (`planar/queries/`) on every layout and window. Without arguments it runs the paper's
-month. It stops and names the download command when a day of the period is missing, and stops at
+queries (`planar/queries/`) on every layout and window, timed over the files and through each
+catalog, and the evaluation figures of the paper (`planar/74_figures.py`). Without arguments it
+runs the paper's month. It stops and names the download command when a day of the period is missing, and stops at
 the answer gate when a layout's vessels differ from L0's.
 
 The run lands in `data/stage/planar/<FROM>_<TO + 1 day>/`: `L0/`, `layouts_daily/` (L0X, L0Z, L0H,
@@ -84,7 +85,12 @@ L1 to L4) and `layout_compact/` (L1s to L4s). The results land in
   1.0000 wherever L0's answer is not zero;
 - `query-runtime-summary.csv`, per layout, window and query, the trimmed mean of five warm runs,
   its 95% interval, the peak memory, and whether the runs agree and match L0
-  (`planar/71_summarize.py`).
+  (`planar/71_summarize.py`);
+- `query-runtime-iceberg-summary.csv` and `query-runtime-ducklake-summary.csv`, the same for the
+  queries read through the Iceberg catalog and through DuckLake;
+- `figures/`, the evaluation figures: the share of its bytes each layout reads, the speedup of
+  each query and layout over L0, the trade-off of speedup against bytes read, and the files a
+  query reads and the speedup it gains through each catalog.
 
 The windows are the paper's (`planar/windows_25832.csv`, written by `planar/45_windows.sql`): four
 regions crossed with an hour, a day and a week from 2026-01-15 08:00 UTC and the month of January.
