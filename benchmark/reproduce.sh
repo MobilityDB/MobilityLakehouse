@@ -28,8 +28,11 @@
 # built from them; STEPS ("ingest clean layouts check sensitivity segments answers pruning storage
 # catalogs queries timing"), the steps this invocation runs, each reading what the step before it
 # wrote; `cold` is a further step, the timing after dropping the page cache before every run, which
-# needs `sudo -n tee /proc/sys/vm/drop_caches`; PYTHON (python3), the interpreter carrying the
-# packages of planar/requirements.txt, which the catalogs step registers the layouts with.
+# needs `sudo -n tee /proc/sys/vm/drop_caches`; `mobilitydb` is another, the ten queries answered by
+# MobilityDB in PostgreSQL over L0 and compared with L0's answers (planar/75_mobilitydb.py), which
+# needs a PostgreSQL server carrying MobilityDB, PostGIS and pg_parquet, named by PGHOST, PGPORT,
+# PGDATABASE and PGUSER; PYTHON (python3), the interpreter carrying the packages of
+# planar/requirements.txt, which the catalogs step registers the layouts with.
 set -euo pipefail
 
 B="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -141,6 +144,11 @@ if want timing; then
   mkdir -p "$OUT"; rm -f "$OUT/query-runtime.csv"
   QUERY_OUT="$OUT/query-runtime.csv" python3 "$B/planar/70_queries.py" --mode warm
   python3 "$B/planar/71_summarize.py" "$OUT/query-runtime.csv" > "$OUT/query-runtime-summary.csv"
+fi
+if want mobilitydb; then
+  mkdir -p "$OUT"
+  MOBILITYDB_OUT="$OUT/mobilitydb-answers.csv" python3 "$B/planar/75_mobilitydb.py" \
+    --answers "$OUT/answers.csv"
 fi
 if want cold; then
   mkdir -p "$OUT"; rm -f "$OUT/query-runtime-cold.csv"
