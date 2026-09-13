@@ -38,6 +38,18 @@ in the raw zone is skipped, so an interrupted download resumes where it stopped.
 - For the answers of MobilityDB, a PostgreSQL server carrying MobilityDB, PostGIS and
   [pg_parquet](https://github.com/CrunchyData/pg_parquet), `psql`, and a role that may read the
   server's files, named by the usual `PGHOST`, `PGPORT`, `PGDATABASE` and `PGUSER`.
+- For the cell-cover soundness, a MEOS install built with H3 from MobilityDB at the commit
+  MobilityDuck builds its MEOS from (`_MEOS_REF` in MobilityDuck's `vcpkg_ports/meos/portfile.cmake`),
+  named by `MEOS_PREFIX`, and the H3 static archive that MEOS build links (`H3_INCLUDE_DIR`,
+  `H3_LIBRARY`, by default `/usr/local/include/h3` and `/usr/local/lib/libh3.a`).
+  `planar/cellcover/build.sh` links the harness against both:
+
+  ```bash
+  cmake -S MobilityDB -B build-meos -DMEOS=ON -DALL=ON -DH3=ON -DCMAKE_BUILD_TYPE=Release \
+    -DCMAKE_INSTALL_PREFIX=$HOME/meos
+  cmake --build build-meos -j && cmake --install build-meos
+  export MEOS_PREFIX=$HOME/meos
+  ```
 - Disk: for the month, 17.3 GB of archives, 11 GB of raw zone, and in the run directory 9.0 GB of
   vessel buckets, 9.2 GB of clean points, 8.0 GB of segments, 3.3 GB of L0, 23.0 GB of daily
   layouts and 12.6 GB of compact layouts.
@@ -58,7 +70,9 @@ region cell (`planar/54_cell_sensitivity.sql`), the table of the cleaned segment
 (`planar/50_query_layouts.sh`), the storage each layout takes (`planar/53_storage.py`), the
 registration of every layout as an Iceberg table in the REST catalog over MinIO
 (`planar/80_register.py`) and as a DuckLake table (`planar/81_register_ducklake.sh`), what the two
-catalogs let each window skip at the file level (`planar/52_catalog_pruning.py`), then the ten
+catalogs let each window skip at the file level (`planar/52_catalog_pruning.py`), the soundness of
+the H3 cell cover over the moving trips carried to WGS84 at resolutions 7 to 12, its coarsening
+and its cost (`planar/46_trips.sh`, `planar/60_soundness.sh`, `planar/cellcover/`), then the ten
 queries (`planar/queries/`) on every layout and window, timed over the files and through each
 catalog, and the evaluation figures of the paper (`planar/74_figures.py`). Without arguments it
 runs the paper's month. It stops and names the download command when a day of the period is missing, and stops at
@@ -80,6 +94,14 @@ L1 to L4) and `layout_compact/` (L1s to L4s). The results land in
 - `storage.csv`, per layout the files, rows, rows per row of L0 and bytes;
 - `catalog-pruning.csv`, per catalog, covering form, layout and window the files and bytes the
   catalog's recorded bounds admit and the files the engine's scan of the table reads;
+- `soundness-res7.csv` to `soundness-res12.csv`, per trip cover and region cover the pairs of trip
+  and window the exact predicate accepts, the pairs each cover admits, and its recall;
+- `coarsen-12-10.csv` and `coarsen-10-7.csv`, a cover stored at the first resolution and read down
+  to the second against the cover rebuilt there: the cells and rows that differ, the candidates
+  and recall of each, and the time of each;
+- `cost-L0-<res>.csv` and `cost-L3s-<res>.csv` at resolutions 7, 10 and 12, per window the rows the
+  stored box keeps, those the stored cover then keeps, the exact predicate's seconds over each and
+  the cover test's, and the cell column's size against the trajectory column's;
 - `answers.csv`, the answer of each query in each window, read from L0 (`planar/72_answers.py`);
 - `recall.csv`, each layout's count over L0's for the counting queries, per window, which reads
   1.0000 wherever L0's answer is not zero;
