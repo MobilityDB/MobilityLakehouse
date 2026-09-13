@@ -26,8 +26,15 @@ in the raw zone is skipped, so an interrupted download resumes where it stopped.
 - A DuckDB shell carrying the MobilityDuck extension, built from
   <https://github.com/MobilityDB/MobilityDuck>, named by `DUCKDB_ENGINE` or by a local file
   `planar/engine.path` holding its path (git ignores it).
-- `bash`, `curl`, `unzip`, `python3` (its standard library only) and GNU `time` at
-  `/usr/bin/time`, which the query harness reads each engine's peak memory from.
+- `bash`, `curl`, `unzip`, `python3` and GNU `time` at `/usr/bin/time`, which the query harness
+  reads each engine's peak memory from.
+- For the catalogs, Docker Compose, which runs MinIO and the Iceberg REST catalog
+  (`planar/iceberg/docker-compose.yml`), and the Python packages of `planar/requirements.txt`:
+
+  ```bash
+  python3 -m venv .venv && .venv/bin/pip install -r benchmark/planar/requirements.txt
+  export PYTHON=$PWD/.venv/bin/python
+  ```
 - Disk: for the month, 17.3 GB of archives, 11 GB of raw zone, and in the run directory 9.0 GB of
   vessel buckets, 9.2 GB of clean points, 8.0 GB of segments, 3.3 GB of L0, 23.0 GB of daily
   layouts and 12.6 GB of compact layouts.
@@ -45,8 +52,10 @@ their checks (`planar/92_check_layouts.sh`), the sensitivity of the spatial layo
 region cell (`planar/54_cell_sensitivity.sql`), the table of the cleaned segments by type
 (`planar/73_segment_table.sql`), the vessels each layout answers each window with against L0's
 (`planar/51_verify_answers.sh`), what the row-group statistics of each layout let a window skip
-(`planar/50_query_layouts.sh`) and the storage each layout takes (`planar/53_storage.py`), then the
-ten queries (`planar/queries/`) on every layout and window. Without arguments it runs the paper's
+(`planar/50_query_layouts.sh`), the storage each layout takes (`planar/53_storage.py`), the
+registration of every layout as an Iceberg table in the REST catalog over MinIO
+(`planar/80_register.py`) and as a DuckLake table (`planar/81_register_ducklake.sh`), then the ten
+queries (`planar/queries/`) on every layout and window. Without arguments it runs the paper's
 month. It stops and names the download command when a day of the period is missing, and stops at
 the answer gate when a layout's vessels differ from L0's.
 

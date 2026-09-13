@@ -1,0 +1,46 @@
+# The lakehouse's object store and catalog: MinIO holds the Parquet data and the Iceberg metadata,
+# and the Iceberg REST catalog fixture serves the tables over them. The services and their wiring
+# are those of the Iceberg Spark quickstart (apache/iceberg site/docs/spark-quickstart.md) without
+# its Spark and mc containers; the bucket is made by 80_register.py. The catalog's SQLite database
+# and MinIO's data live on bind mounts under $ROOT/lakehouse-store, so a restart keeps every table.
+#
+#   ROOT=<data directory> docker compose -f planar/iceberg/docker-compose.yml up -d
+services:
+  rest:
+    image: apache/iceberg-rest-fixture
+    container_name: lakehouse-iceberg-rest
+    networks:
+      iceberg_net:
+    ports:
+      - 8181:8181
+    volumes:
+      - ${ROOT:?ROOT names the data directory}/lakehouse-store/catalog:/catalog
+    environment:
+      - AWS_ACCESS_KEY_ID=admin
+      - AWS_SECRET_ACCESS_KEY=password
+      - AWS_REGION=us-east-1
+      - CATALOG_WAREHOUSE=s3://warehouse/
+      - CATALOG_IO__IMPL=org.apache.iceberg.aws.s3.S3FileIO
+      - CATALOG_S3_ENDPOINT=http://minio:9000
+      - CATALOG_CATALOG__IMPL=org.apache.iceberg.jdbc.JdbcCatalog
+      - CATALOG_URI=jdbc:sqlite:/catalog/iceberg_catalog.db?journal_mode=WAL
+      - LOG_LEVEL=WARN
+  minio:
+    image: minio/minio
+    container_name: lakehouse-minio
+    environment:
+      - MINIO_ROOT_USER=admin
+      - MINIO_ROOT_PASSWORD=password
+      - MINIO_DOMAIN=minio
+    networks:
+      iceberg_net:
+        aliases:
+          - warehouse.minio
+    ports:
+      - 9001:9001
+      - 9000:9000
+    volumes:
+      - ${ROOT:?ROOT names the data directory}/lakehouse-store/minio:/data
+    command: ["server", "/data", "--console-address", ":9001"]
+networks:
+  iceberg_net:

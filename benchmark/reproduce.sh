@@ -6,7 +6,9 @@
 # layouts (planar/40_order_layouts.sh, 41_part_layouts.sh, 42_compact_layouts.sh) and checks them
 # (planar/92_check_layouts.sh), stops unless every layout answers each window with L0's vessels
 # (planar/51_verify_answers.sh), measures what each layout's row-group statistics let a window skip
-# and the storage each layout takes (planar/50_query_layouts.sh, 53_storage.py), answers the ten
+# and the storage each layout takes (planar/50_query_layouts.sh, 53_storage.py), registers them in
+# an Iceberg REST catalog over MinIO and in DuckLake (planar/80_register.py,
+# 81_register_ducklake.sh, the services of planar/iceberg/docker-compose.yml), answers the ten
 # benchmark queries on every layout and window once
 # and derives the answers table and each layout's recall against L0 (planar/70_queries.py,
 # 72_answers.py), and times them, five warm runs each, summarized per group
@@ -24,16 +26,18 @@
 # Environment: DUCKDB_ENGINE, a DuckDB shell carrying MobilityDuck (else the one
 # planar/engine.path names); ROOT (the repository's data/), which holds the archives and everything
 # built from them; STEPS ("ingest clean layouts check sensitivity segments answers pruning storage
-# queries timing"), the steps this invocation runs, each reading what the step before it wrote;
-# `cold` is a further step, the timing after dropping the page cache before every run, which needs
-# `sudo -n tee /proc/sys/vm/drop_caches`.
+# catalogs queries timing"), the steps this invocation runs, each reading what the step before it
+# wrote; `cold` is a further step, the timing after dropping the page cache before every run, which
+# needs `sudo -n tee /proc/sys/vm/drop_caches`; PYTHON (python3), the interpreter carrying the
+# packages of planar/requirements.txt, which the catalogs step registers the layouts with.
 set -euo pipefail
 
 B="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 FROM=${1:-2026-01-01}
 TO=${2:-2026-01-31}
 export ROOT=${ROOT:-$(cd "$B/.." && pwd)/data}
-STEPS=${STEPS:-"ingest clean layouts check sensitivity segments answers pruning storage queries timing"}
+STEPS=${STEPS:-"ingest clean layouts check sensitivity segments answers pruning storage catalogs queries timing"}
+LAYOUTS="L0 L0X L0Z L0H L1 L2 L3 L4 L1s L2s L3s L4s"
 
 want() { case " $STEPS " in *" $1 "*) return 0;; *) return 1;; esac; }
 # The day after $1, with GNU date or, on macOS, BSD date.
@@ -109,6 +113,22 @@ fi
 if want storage; then
   mkdir -p "$OUT"
   python3 "$B/planar/53_storage.py" > "$OUT/storage.csv"
+fi
+if want catalogs; then
+  # The bind mounts exist before the services start, so they belong to this user, not to Docker
+  mkdir -p "$ROOT/lakehouse-store/catalog" "$ROOT/lakehouse-store/minio" \
+    "$ROOT/lakehouse-store/ducklake"
+  docker compose -f "$B/planar/iceberg/docker-compose.yml" up -d
+  for _ in $(seq 60); do
+    curl -sf -o /dev/null http://localhost:8181/v1/config && break
+    sleep 1
+  done
+  "${PYTHON:-python3}" "$B/planar/80_register.py" $LAYOUTS
+  # A fresh DuckLake catalog: the twelve layouts are its whole content, and a catalog written by one
+  # DuckLake extension version is never carried into another
+  rm -f "$ROOT/lakehouse-store/ducklake/trips.ducklake" "$ROOT/lakehouse-store/ducklake/trips.ducklake.wal"
+  "${PYTHON:-python3}" -c "import s3fs; fs = s3fs.S3FileSystem(key='admin', secret='password', client_kwargs={'endpoint_url': 'http://localhost:9000'}); p = 'warehouse/ducklake/trips'; fs.rm(p, recursive=True) if fs.exists(p) else None"
+  "$B/planar/81_register_ducklake.sh" $LAYOUTS
 fi
 # 70_queries.py appends to QUERY_OUT, so each step starts its file afresh.
 if want queries; then
