@@ -26,21 +26,22 @@
 # Environment: DUCKDB_ENGINE, a DuckDB shell carrying MobilityDuck (else the one
 # planar/engine.path names); ROOT (the repository's data/), which holds the archives and everything
 # built from them; STEPS ("ingest clean layouts check sensitivity segments answers pruning storage
-# catalogs catalog-pruning queries timing catalog-timing figures"), the steps this invocation runs,
-# each reading what the step before it wrote; `cold` is a further step, the timing after dropping
-# the page cache before every run, which needs `sudo -n tee /proc/sys/vm/drop_caches`;
+# catalogs catalog-pruning soundness queries timing catalog-timing figures"), the steps this
+# invocation runs, each reading what the step before it wrote; `cold` is a further step, the timing
+# after dropping the page cache before every run, which needs `sudo -n tee /proc/sys/vm/drop_caches`;
 # `mobilitydb` another, the ten queries answered by MobilityDB in PostgreSQL over L0 and compared
 # with L0's answers (planar/75_mobilitydb.py), which needs a PostgreSQL server carrying MobilityDB,
 # PostGIS and pg_parquet, named by PGHOST, PGPORT, PGDATABASE and PGUSER; PYTHON (python3), the
 # interpreter carrying the packages of planar/requirements.txt, which the catalogs step registers
-# the layouts with and the catalog-pruning step reads the Iceberg catalog with.
+# the layouts with and the catalog-pruning step reads the Iceberg catalog with; MEOS_PREFIX, the
+# MEOS install built with H3 that the soundness step builds the cell-cover harness against.
 set -euo pipefail
 
 B="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 FROM=${1:-2026-01-01}
 TO=${2:-2026-01-31}
 export ROOT=${ROOT:-$(cd "$B/.." && pwd)/data}
-STEPS=${STEPS:-"ingest clean layouts check sensitivity segments answers pruning storage catalogs catalog-pruning queries timing catalog-timing figures"}
+STEPS=${STEPS:-"ingest clean layouts check sensitivity segments answers pruning storage catalogs catalog-pruning soundness queries timing catalog-timing figures"}
 LAYOUTS="L0 L0X L0Z L0H L1 L2 L3 L4 L1s L2s L3s L4s"
 
 want() { case " $STEPS " in *" $1 "*) return 0;; *) return 1;; esac; }
@@ -67,6 +68,12 @@ if (( ${#missing[@]} > 0 )); then
        "the first ${missing[0]}; download them from the Danish Maritime Authority with" >&2
   echo "  $B/ingest/fetch_dma.sh $FROM $TO --dir $ROOT" >&2
   exit 1
+fi
+
+if want soundness && [[ ! -x "$B/planar/cellcover/cellcover" && -z "${MEOS_PREFIX:-}" ]]; then
+  echo "reproduce.sh: the soundness step builds planar/cellcover against MEOS_PREFIX, a MEOS" \
+       "install built with H3; set it, or leave soundness out of STEPS" >&2
+  exit 2
 fi
 
 echo ">> $FROM..$TO, run $RUN"
@@ -147,6 +154,31 @@ if want catalog-timing; then
       --source "$src"
     python3 "$B/planar/71_summarize.py" "$OUT/query-runtime-$src.csv" \
       > "$OUT/query-runtime-$src-summary.csv"
+  done
+fi
+# The harness is built against MEOS_PREFIX when this checkout holds no build of it yet
+if want soundness; then
+  mkdir -p "$OUT"
+  if [[ ! -x "$B/planar/cellcover/cellcover" || ! -x "$B/planar/cellcover/trips_pack" ]]; then
+    "$B/planar/cellcover/build.sh" "$MEOS_PREFIX"
+  fi
+  "$B/planar/46_trips.sh"
+  SOUNDNESS_OUT="$OUT" "$B/planar/60_soundness.sh" 7 8 9 10 11 12
+  # A stored path read down to a coarser grain against the cover rebuilt at that grain
+  for pair in "12 10" "10 7"; do
+    read -r stored coarse <<< "$pair"
+    "$B/planar/cellcover/coarsen" "$RUN/trips.bin" "$B/planar/windows.psv" "$stored" "$coarse" \
+      "$OUT/coarsen-$stored-$coarse.checkpoint.csv" > "$OUT/coarsen-$stored-$coarse.csv"
+  done
+  # What the stored cover removes after the box filter and what it costs, on the baseline and on
+  # the most selective layout
+  LAYOUT=L3s "$B/planar/46_trips.sh"
+  for layout in L0 L3s; do
+    base=trips; [[ $layout == L0 ]] || base="trips-$layout"
+    for res in 7 10 12; do
+      "$B/planar/cellcover/cellcost" "$RUN/$base.bin" "$RUN/$base-box.csv" \
+        "$B/planar/windows.psv" "$B/planar/windows_25832.csv" "$res" > "$OUT/cost-$layout-$res.csv"
+    done
   done
 fi
 # 70_queries.py appends to QUERY_OUT, so each step starts its file afresh.
