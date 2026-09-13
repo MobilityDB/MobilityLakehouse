@@ -145,17 +145,6 @@ if want catalog-pruning; then
   mkdir -p "$OUT"
   PRUNING_OUT="$OUT/catalog-pruning.csv" "${PYTHON:-python3}" "$B/planar/52_catalog_pruning.py"
 fi
-# The ten queries timed through each catalog, as the timing step times them over the files
-if want catalog-timing; then
-  mkdir -p "$OUT"
-  for src in iceberg ducklake; do
-    rm -f "$OUT/query-runtime-$src.csv"
-    QUERY_OUT="$OUT/query-runtime-$src.csv" python3 "$B/planar/70_queries.py" --mode warm \
-      --source "$src"
-    python3 "$B/planar/71_summarize.py" "$OUT/query-runtime-$src.csv" \
-      > "$OUT/query-runtime-$src-summary.csv"
-  done
-fi
 # The harness is built against MEOS_PREFIX when this checkout holds no build of it yet
 if want soundness; then
   mkdir -p "$OUT"
@@ -192,6 +181,17 @@ if want timing; then
   mkdir -p "$OUT"; rm -f "$OUT/query-runtime.csv"
   QUERY_OUT="$OUT/query-runtime.csv" python3 "$B/planar/70_queries.py" --mode warm
   python3 "$B/planar/71_summarize.py" "$OUT/query-runtime.csv" > "$OUT/query-runtime-summary.csv"
+fi
+# The ten queries timed through each catalog, as the timing step times them over the files
+if want catalog-timing; then
+  mkdir -p "$OUT"
+  for src in iceberg ducklake; do
+    rm -f "$OUT/query-runtime-$src.csv"
+    QUERY_OUT="$OUT/query-runtime-$src.csv" python3 "$B/planar/70_queries.py" --mode warm \
+      --source "$src"
+    python3 "$B/planar/71_summarize.py" "$OUT/query-runtime-$src.csv" \
+      > "$OUT/query-runtime-$src-summary.csv"
+  done
 fi
 if want mobilitydb; then
   mkdir -p "$OUT"
