@@ -57,7 +57,8 @@ region cell (`planar/54_cell_sensitivity.sql`), the table of the cleaned segment
 (`planar/51_verify_answers.sh`), what the row-group statistics of each layout let a window skip
 (`planar/50_query_layouts.sh`), the storage each layout takes (`planar/53_storage.py`), the
 registration of every layout as an Iceberg table in the REST catalog over MinIO
-(`planar/80_register.py`) and as a DuckLake table (`planar/81_register_ducklake.sh`), then the ten
+(`planar/80_register.py`) and as a DuckLake table (`planar/81_register_ducklake.sh`), what the two
+catalogs let each window skip at the file level (`planar/52_catalog_pruning.py`), then the ten
 queries (`planar/queries/`) on every layout and window. Without arguments it runs the paper's
 month. It stops and names the download command when a day of the period is missing, and stops at
 the answer gate when a layout's vessels differ from L0's.
@@ -76,6 +77,8 @@ L1 to L4) and `layout_compact/` (L1s to L4s). The results land in
 - `layout-pruning.csv`, per layout and window the row groups, files, rows and bytes the window
   admits and their share of the layout;
 - `storage.csv`, per layout the files, rows, rows per row of L0 and bytes;
+- `catalog-pruning.csv`, per catalog, covering form, layout and window the files and bytes the
+  catalog's recorded bounds admit and the files the engine's scan of the table reads;
 - `answers.csv`, the answer of each query in each window, read from L0 (`planar/72_answers.py`);
 - `recall.csv`, each layout's count over L0's for the counting queries, per window, which reads
   1.0000 wherever L0's answer is not zero;
