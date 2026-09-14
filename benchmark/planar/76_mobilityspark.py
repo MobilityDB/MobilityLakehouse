@@ -24,7 +24,7 @@ by a cast to DECIMAL.
 
 Environment: RUN (required); ROOT (the repository's data/); MOBILITYSPARK, a MobilitySpark checkout
 built by its tools/refresh-from-master.sh, whose target/classes, Maven runtime classpath and
-.meos-chain/prefix/lib the session runs on; JAVA (java); SPARK_MEMORY (12g); MOBILITYSPARK_OUT (the
+.meos-chain/prefix/lib the session runs on; JAVA (java); SPARK_MEMORY (16g); MOBILITYSPARK_OUT (the
 table written, $ROOT/results/planar/mobilityspark-answers.csv).
 """
 import argparse
@@ -40,7 +40,7 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 ROOT = Path(os.environ.get('ROOT') or HERE.parents[1] / 'data')
 JAVA = os.environ.get('JAVA', 'java')
-MEMORY = os.environ.get('SPARK_MEMORY', '12g')
+MEMORY = os.environ.get('SPARK_MEMORY', '16g')
 
 
 def module(name, file):
