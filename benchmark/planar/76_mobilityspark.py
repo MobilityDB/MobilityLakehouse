@@ -28,12 +28,18 @@ by a digest of its block's text, so an answer is reused only for the same query 
 on the same build; the file is removed once every block is answered. Spark's own log goes to
 spark.err beside the compiled runner.
 
+The session runs SPARK_TASKS tasks at once, by default one per core and at most one per 2 GiB of
+heap. A task of a proximity query holds rows of a self-join, each carrying two whole trajectories,
+and the tasks running at once share the one heap, so their number, not the data alone, sets the
+heap a task gets.
+
   RUN=<run> python3 planar/76_mobilityspark.py --answers answers.csv [--windows 1day ...]
 
 Environment: RUN (required); ROOT (the repository's data/); MOBILITYSPARK, a MobilitySpark checkout
 built by its tools/refresh-from-master.sh, whose target/classes, Maven runtime classpath and
-.meos-chain/prefix/lib the session runs on; JAVA (java); SPARK_MEMORY (16g); MOBILITYSPARK_OUT (the
-table written, $ROOT/results/planar/mobilityspark-answers.csv).
+.meos-chain/prefix/lib the session runs on; JAVA (java); SPARK_MEMORY (16g); SPARK_TASKS (the cores,
+at most one per 2 GiB of SPARK_MEMORY); MOBILITYSPARK_OUT (the table written,
+$ROOT/results/planar/mobilityspark-answers.csv).
 """
 import argparse
 import csv
@@ -51,6 +57,19 @@ HERE = Path(__file__).resolve().parent
 ROOT = Path(os.environ.get('ROOT') or HERE.parents[1] / 'data')
 JAVA = os.environ.get('JAVA', 'java')
 MEMORY = os.environ.get('SPARK_MEMORY', '16g')
+
+
+def heap_gib(memory):
+    """The heap a -Xmx value names, in GiB"""
+    m = re.fullmatch(r'(\d+)([kmgt]?)', memory.strip().lower())
+    if not m:
+        sys.exit(f'SPARK_MEMORY {memory!r} is not a Java heap size')
+    return int(m.group(1)) * {'': 1, 'k': 2 ** 10, 'm': 2 ** 20, 'g': 2 ** 30,
+                              't': 2 ** 40}[m.group(2)] / 2 ** 30
+
+
+TASKS = int(os.environ.get('SPARK_TASKS') or
+            max(1, min(os.cpu_count() or 1, int(heap_gib(MEMORY) // 2))))
 
 
 def module(name, file):
@@ -87,7 +106,8 @@ def session(ms, gen):
         sys.exit(f'no libmeos under {lib}: build MobilitySpark with its tools/refresh-from-master.sh')
     # The JVM options Spark needs on Java 17 and later, as MobilitySpark's own suite runs it
     opens = re.findall(r'--add-opens=[^\s<]+', (ms / 'pom.xml').read_text())
-    cmd = [JAVA, *opens, f'-Xmx{MEMORY}', f'-Djava.library.path={lib}',
+    cmd = [JAVA, *opens, f'-Xmx{MEMORY}', f'-Dspark.master=local[{TASKS}]',
+           f'-Djava.library.path={lib}',
            f'-Djnr.ffi.library.path={lib}', '-cp', f'{gen}:{cp}', 'SparkQueries']
     env = dict(os.environ, LD_LIBRARY_PATH=f"{lib}:{os.environ.get('LD_LIBRARY_PATH', '')}")
     return cmd, env
