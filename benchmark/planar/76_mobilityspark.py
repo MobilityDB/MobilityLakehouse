@@ -20,6 +20,14 @@ for atTime over it, temporal_at_timestamptz for the instant valueAtTimestamp rea
 stbox_xmin .. stbox_ymax over tspatial_to_stbox for a trajectory's extent; and they round a number
 by a cast to DECIMAL.
 
+Each answer is kept the moment Spark prints it, in the table's `.part` file beside it, so a session
+cut short (an out-of-memory stop, a restart of the machine) loses only the query it was running: the
+next run over the same files hands Spark only the blocks the `.part` file does not answer. The file
+names the run by a digest of the L0 files, the runner and the MobilitySpark build, and each answer
+by a digest of its block's text, so an answer is reused only for the same query over the same data
+on the same build; the file is removed once every block is answered. Spark's own log goes to
+spark.err beside the compiled runner.
+
   RUN=<run> python3 planar/76_mobilityspark.py --answers answers.csv [--windows 1day ...]
 
 Environment: RUN (required); ROOT (the repository's data/); MOBILITYSPARK, a MobilitySpark checkout
@@ -30,11 +38,13 @@ table written, $ROOT/results/planar/mobilityspark-answers.csv).
 import argparse
 import csv
 import glob
+import hashlib
 import importlib.util
 import os
 import re
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -83,6 +93,39 @@ def session(ms, gen):
     return cmd, env
 
 
+def digest(*parts):
+    """A short digest of the given texts"""
+    h = hashlib.sha256()
+    for p in parts:
+        h.update(p.encode())
+        h.update(b'\0')
+    return h.hexdigest()[:16]
+
+
+def run_digest(files, ms):
+    """The run an answer belongs to: the L0 files, the runner, and the MobilitySpark build"""
+    head = subprocess.run(['git', '-C', str(ms), 'rev-parse', 'HEAD'], capture_output=True,
+                          text=True).stdout.strip()
+    meos = ms / '.meos-chain' / 'prefix' / 'lib' / 'libmeos.so'
+    stamp = lambda p: f'{p} {p.stat().st_size} {p.stat().st_mtime_ns}'
+    return digest(*(stamp(Path(f)) for f in files), (HERE / 'spark' / 'SparkQueries.java').read_text(),
+                  str(ms.resolve()), head, stamp(meos))
+
+
+def kept_answers(part, run_id):
+    """The answers the `.part` file keeps for this run, by label, with the digest of each block"""
+    kept = {}
+    if part.exists():
+        lines = part.read_text().splitlines()
+        if lines and lines[0] == f'@@RUN {run_id}':
+            for line in lines[1:]:
+                label, sep, rest = line.partition('\t')
+                block, sep2, value = rest.partition('\t')
+                if sep and sep2:
+                    kept[label] = (block, value)
+    return kept
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--windows', nargs='+', default=['1h', '1day', '1week', '1month'])
@@ -105,28 +148,59 @@ def main():
                     truth[(r['query'], w)] = r.get(w) or ''
 
     regions, windows = q70.read_windows()
-    blocks = []
+    blocks = {}
     for win in a.windows:
         t0, t1 = windows[win]
         for q in a.queries:
             stmts = q70.statements(q, regions, t0, t1, 'flat')
-            blocks.append(f'@@QUERY {win} {q}\n' + '\n'.join(spark_text(s) for s in stmts) + '\n')
+            blocks[f'{win} {q}'] = '\n'.join(spark_text(s) for s in stmts) + '\n'
+    block_id = {label: digest(text) for label, text in blocks.items()}
 
-    cmd, env = session(ms, run / 'gen' / 'spark')
-    proc = subprocess.run(cmd + files, input=''.join(blocks), env=env, capture_output=True,
-                          text=True)
-    if proc.returncode != 0:
-        # SLF4J's notices about a missing logger binding are not the failure; the rest is
-        err = '\n'.join(l for l in proc.stderr.splitlines() if not l.startswith('SLF4J'))
-        print(f'Spark exited with status {proc.returncode}: {err[-1500:]}', file=sys.stderr)
+    # The answers an earlier session of this run kept, for the blocks whose text is unchanged
+    part = out.with_name(out.name + '.part')
+    run_id = run_digest(files, ms)
     answers, errors = {}, {}
-    for line in proc.stdout.splitlines():
-        kind, _, rest = line.partition(' ')
-        label, _, value = rest.partition('\t')
-        if kind == '@@ANSWER':
-            answers[label] = value.strip()
-        elif kind == '@@ERROR':
-            errors[label] = value.strip()
+    for label, (block, value) in kept_answers(part, run_id).items():
+        if block_id.get(label) == block:
+            answers[label] = value
+    with open(part, 'w') as f:
+        f.write(f'@@RUN {run_id}\n')
+        for label, value in answers.items():
+            f.write(f'{label}\t{block_id[label]}\t{value}\n')
+    todo = [label for label in blocks if label not in answers]
+    if answers:
+        print(f'{len(answers)} answers kept from an earlier session, {len(todo)} to answer',
+              flush=True)
+
+    if todo:
+        gen = run / 'gen' / 'spark'
+        cmd, env = session(ms, gen)
+        feed = gen / 'blocks.txt'
+        feed.write_text(''.join(f'@@QUERY {label}\n{blocks[label]}' for label in todo))
+        started = time.monotonic()
+        with open(feed) as fin, open(gen / 'spark.err', 'w') as ferr, open(part, 'a') as fpart:
+            proc = subprocess.Popen(cmd + files, stdin=fin, stdout=subprocess.PIPE, stderr=ferr,
+                                    env=env, text=True)
+            for line in proc.stdout:
+                kind, _, rest = line.rstrip('\n').partition(' ')
+                label, _, value = rest.partition('\t')
+                if kind == '@@ANSWER':
+                    answers[label] = value.strip()
+                    fpart.write(f'{label}\t{block_id[label]}\t{answers[label]}\n')
+                    fpart.flush()
+                    os.fsync(fpart.fileno())
+                elif kind == '@@ERROR':
+                    errors[label] = value.strip()
+                else:
+                    continue
+                print(f'{label} {kind[2:].lower()} at {time.monotonic() - started:.0f} s',
+                      flush=True)
+            status = proc.wait()
+        if status != 0:
+            # SLF4J's notices about a missing logger binding are not the failure; the rest is
+            err = '\n'.join(l for l in (gen / 'spark.err').read_text().splitlines()
+                            if not l.startswith('SLF4J'))
+            print(f'Spark exited with status {status}: {err[-1500:]}', file=sys.stderr)
 
     agree = total = 0
     with open(out, 'w', newline='') as f:
@@ -145,6 +219,8 @@ def main():
                 print(f'{win} {q}: {shown}   L0 {ref or "-"}', flush=True)
     if a.answers:
         print(f'{agree} of {total} answers equal L0\'s', flush=True)
+    if all(label in answers for label in blocks):
+        part.unlink()
 
 
 if __name__ == '__main__':
