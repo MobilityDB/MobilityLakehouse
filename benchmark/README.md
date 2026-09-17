@@ -108,9 +108,11 @@ L1 to L4) and `layout_compact/` (L1s to L4s). The results land in
   dilated by one ring) the cells of the region cover, the pairs of trip and window the exact
   predicate accepts, the pairs each cover admits, and its recall;
 - `coarsen-12-10.csv` and `coarsen-10-7.csv`, a cover stored at the first resolution and read down
-  to the second against the cover rebuilt there: the cells and rows that differ, the candidates
-  and recall of each against the exact region cover and against it dilated by one ring, and the
-  time of each;
+  to the second from the stored cells alone, as their parents, as their parents with one ring, and
+  as the exact covers of the stored cells' hexagons, against the cover rebuilt there: the cells
+  each path lacks and holds beyond the rebuilt cover and the trips that lack one, the ring distance
+  of each rebuilt cell the parents lack, the time of each, and per window the candidates and recall
+  of each against the exact region cover and against it dilated by one ring;
 - `cost-L0-<res>.csv` and `cost-L3s-<res>.csv` at resolutions 7, 10 and 12, per window the rows the
   stored box keeps, those the stored cover then keeps against the exact region cover, the exact
   predicate's seconds over each and the cover test's, the rows the exact cover dilated by one ring
