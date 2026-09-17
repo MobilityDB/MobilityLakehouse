@@ -47,8 +47,8 @@ in the raw zone is skipped, so an interrupted download resumes where it stopped.
   git clone https://github.com/MobilityDB/MobilitySpark.git && MobilitySpark/tools/refresh-from-master.sh
   export MOBILITYSPARK=$PWD/MobilitySpark
   ```
-- For the cell-cover soundness, a MEOS install built with H3 from MobilityDB at the commit
-  MobilityDuck builds its MEOS from (`_MEOS_REF` in MobilityDuck's `vcpkg_ports/meos/portfile.cmake`),
+- For the cell-cover soundness, a MEOS install built with H3 from MobilityDB master, whose
+  `geoToH3IndexSet` answers the exact cover of a geometry, the cells holding a point of it,
   named by `MEOS_PREFIX`, and the H3 static archive that MEOS build links (`H3_INCLUDE_DIR`,
   `H3_LIBRARY`, by default `/usr/local/include/h3` and `/usr/local/lib/libh3.a`).
   `planar/cellcover/build.sh` links the harness against both:
@@ -103,14 +103,18 @@ L1 to L4) and `layout_compact/` (L1s to L4s). The results land in
 - `storage.csv`, per layout the files, rows, rows per row of L0 and bytes;
 - `catalog-pruning.csv`, per catalog, covering form, layout and window the files and bytes the
   catalog's recorded bounds admit and the files the engine's scan of the table reads;
-- `soundness-res7.csv` to `soundness-res12.csv`, per trip cover and region cover the pairs of trip
-  and window the exact predicate accepts, the pairs each cover admits, and its recall;
+- `soundness-res7.csv` to `soundness-res12.csv`, per trip cover (per-instant, swept segment) and
+  region cover (centre containment, the exact cover `geoToH3IndexSet` answers, and the exact cover
+  dilated by one ring) the cells of the region cover, the pairs of trip and window the exact
+  predicate accepts, the pairs each cover admits, and its recall;
 - `coarsen-12-10.csv` and `coarsen-10-7.csv`, a cover stored at the first resolution and read down
   to the second against the cover rebuilt there: the cells and rows that differ, the candidates
-  and recall of each, and the time of each;
+  and recall of each against the exact region cover and against it dilated by one ring, and the
+  time of each;
 - `cost-L0-<res>.csv` and `cost-L3s-<res>.csv` at resolutions 7, 10 and 12, per window the rows the
-  stored box keeps, those the stored cover then keeps, the exact predicate's seconds over each and
-  the cover test's, and the cell column's size against the trajectory column's;
+  stored box keeps, those the stored cover then keeps against the exact region cover, the exact
+  predicate's seconds over each and the cover test's, the rows the exact cover dilated by one ring
+  keeps, and the cell column's size against the trajectory column's;
 - `answers.csv`, the answer of each query in each window, read from L0 (`planar/72_answers.py`);
 - `recall.csv`, each layout's count over L0's for the counting queries, per window, which reads
   1.0000 wherever L0's answer is not zero;

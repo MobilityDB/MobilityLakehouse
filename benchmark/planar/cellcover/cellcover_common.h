@@ -43,7 +43,7 @@
 /** The trip cover constructions, in the order they are reported */
 typedef enum { TRIP_INSTANT, TRIP_SWEPT, TRIP_N } tripCover;
 /** The region cover constructions, in the order they are reported */
-typedef enum { REGION_CENTRES, REGION_RING, REGION_RING2, REGION_N }
+typedef enum { REGION_CENTRES, REGION_EXACT, REGION_EXACT_RING, REGION_N }
   regionCover;
 
 extern const char *trip_name[TRIP_N];

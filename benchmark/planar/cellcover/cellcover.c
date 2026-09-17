@@ -14,8 +14,9 @@
  *   trip side    per-instant   the cells holding the recorded positions
  *                swept         every cell the interpolated path meets
  *   region side  centres       the cells whose centre lies in the region
- *                ring          every cell the region meets
- *                ring2         that cover dilated by one further grid ring
+ *                exact         the cells holding a point of the region, the
+ *                              cover geoToH3IndexSet answers
+ *                exact + ring  that cover dilated by one grid ring
  *
  * H3 reads geographic coordinates only, so everything here is in WGS84: the
  * trips are the corpus trips transformed to EPSG:4326 instant by instant
@@ -198,9 +199,9 @@ main(int argc, char **argv)
   Window *w = windows_read(windows_path, resolution, &nwin);
   fprintf(stderr, "windows: %d at resolution %d\n", nwin, resolution);
   for (int k = 0; k < nwin; k++)
-    fprintf(stderr, "  %-24s centres=%d ring=%d ring2=%d\n", w[k].name,
-      w[k].ncells[REGION_CENTRES], w[k].ncells[REGION_RING],
-      w[k].ncells[REGION_RING2]);
+    fprintf(stderr, "  %-24s centres=%d exact=%d exact_ring=%d\n", w[k].name,
+      w[k].ncells[REGION_CENTRES], w[k].ncells[REGION_EXACT],
+      w[k].ncells[REGION_EXACT_RING]);
 
   Tally tally[TRIP_N][REGION_N];
   memset(tally, 0, sizeof(tally));

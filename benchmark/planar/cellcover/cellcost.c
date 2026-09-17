@@ -8,11 +8,13 @@
  * A query runs in three phases: the scalar box of each row, as the layout
  * stores it, keeps the rows whose box meets the query rectangle over the
  * period; the cell cover keeps, of those, the rows whose stored cells meet the
- * query region's cover dilated by one ring, without decoding a trajectory; the
- * exact predicate decides the rest. This program counts, per query window, the
- * candidates each phase leaves, times the exact predicate over the box's
- * candidates and over the cover's, and times the cover test itself, and it
- * checks that the cover keeps every candidate the exact predicate accepts. It
+ * query region's exact cover, the cells holding a point of the region, without
+ * decoding a trajectory; the exact predicate decides the rest. This program
+ * counts, per query window, the candidates each phase leaves, times the exact
+ * predicate over the box's candidates and over the cover's, and times the
+ * cover test itself, and it checks that the cover keeps every candidate the
+ * exact predicate accepts. Beside it, it counts the candidates and the kept
+ * rows of the exact cover dilated by one grid ring, for comparison. It
  * also sizes the cell column against the trajectory column beside it, both as
  * extended WKB, and times building the cover, which a layout pays once.
  *
@@ -52,9 +54,12 @@ typedef struct
 typedef struct
 {
   int64  box;                 /**< rows the box filter keeps */
-  int64  cover;               /**< of those, the rows the cover also keeps */
+  int64  cover;               /**< of those, the rows the exact cover also keeps */
   int64  truth;               /**< of the box's rows, those the exact predicate accepts */
-  int64  kept;                /**< of those, the rows the cover keeps */
+  int64  kept;                /**< of those, the rows the exact cover keeps */
+  int64  cover_ring;          /**< of the box's rows, those the exact cover
+                                *  dilated by one ring keeps */
+  int64  kept_ring;           /**< of the accepted rows, those it keeps */
   int64  errors;              /**< rows the exact predicate cannot decide */
   double exact_box;           /**< seconds of the exact predicate over the box's rows */
   double exact_cover;         /**< seconds of it over the cover's rows */
@@ -181,12 +186,16 @@ row_measure(TInstant **inst, int ninst, const RowBox *b, const Window *w,
     Cost *c = &cost[k];
     c->box++;
 
-    /* Phase two: the stored cells meet the region's dilated cover */
+    /* Phase two: the stored cells meet the region's exact cover */
     double a = now_seconds();
-    bool passes = cells_intersect(cells, ncells, w[k].cells[REGION_RING],
-      w[k].ncells[REGION_RING]);
+    bool passes = cells_intersect(cells, ncells, w[k].cells[REGION_EXACT],
+      w[k].ncells[REGION_EXACT]);
     double e0 = now_seconds();
     c->test += e0 - a;
+    /* The same test against the exact cover dilated by one ring, untimed */
+    bool passes_ring = cells_intersect(cells, ncells,
+      w[k].cells[REGION_EXACT_RING], w[k].ncells[REGION_EXACT_RING]);
+    e0 = now_seconds();
 
     /* Phase three: the trip over the window's period meets its polygon. An
      * answer the predicate cannot give is counted apart, never read as a row
@@ -208,11 +217,15 @@ row_measure(TInstant **inst, int ninst, const RowBox *b, const Window *w,
       c->cover++;
       c->exact_cover += e;
     }
+    if (passes_ring)
+      c->cover_ring++;
     if (qualifies)
     {
       c->truth++;
       if (passes)
         c->kept++;
+      if (passes_ring)
+        c->kept_ring++;
     }
   }
   free(cells);
@@ -235,16 +248,18 @@ emit_results(FILE *out, int resolution, const Window *w, int nwin,
   fprintf(out, "column_pct,%.3f\n", (col->trip_bytes > 0) ?
     100.0 * (double) col->cover_bytes / (double) col->trip_bytes : 0.0);
   fprintf(out, "window,box,cover,reduction,truth,kept,errors,exact_box_s,"
-    "exact_cover_s,test_s\n");
+    "exact_cover_s,test_s,cover_ring,kept_ring\n");
   Cost all;
   memset(&all, 0, sizeof(all));
   for (int k = 0; k <= nwin; k++)
   {
     const Cost *c = (k < nwin) ? &cost[k] : &all;
     fprintf(out, "%s,%" PRId64 ",%" PRId64 ",%.3f,%" PRId64 ",%" PRId64 ",%" PRId64
-      ",%.3f,%.3f,%.3f\n", (k < nwin) ? w[k].name : "all", c->box, c->cover,
+      ",%.3f,%.3f,%.3f,%" PRId64 ",%" PRId64 "\n", (k < nwin) ? w[k].name : "all",
+      c->box, c->cover,
       (c->cover > 0) ? (double) c->box / (double) c->cover : 0.0, c->truth,
-      c->kept, c->errors, c->exact_box, c->exact_cover, c->test);
+      c->kept, c->errors, c->exact_box, c->exact_cover, c->test, c->cover_ring,
+      c->kept_ring);
     if (k < nwin)
     {
       all.box += c->box;
@@ -255,6 +270,8 @@ emit_results(FILE *out, int resolution, const Window *w, int nwin,
       all.exact_box += c->exact_box;
       all.exact_cover += c->exact_cover;
       all.test += c->test;
+      all.cover_ring += c->cover_ring;
+      all.kept_ring += c->kept_ring;
     }
   }
 }

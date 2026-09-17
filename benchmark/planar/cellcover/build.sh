@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
-# Build the planar cell-cover harness against ONE named MEOS prefix, the one built from the MEOS
-# commit the MobilityDuck engine pins, so the harness and the query engine compute the same cover,
-# and against the H3 release MEOS itself is built with: the harness computes the region covers with
+# Build the planar cell-cover harness against ONE named MEOS prefix, built from a MobilityDB commit
+# whose geoToH3IndexSet answers the exact cover, the cells holding a point of a geometry (the
+# harness refuses at run time a MEOS whose cover of a region holds more), and against the H3
+# release MEOS itself is built with: the harness computes the region covers with
 # libh3 (polygonToCells, gridDisk) while MEOS computes each trip's cover with its own static copy,
 # so both sides of every comparison come from one H3. The H3 archive is linked by path, since
 # `-lh3` takes the first libh3.so on the linker's search path, which is a distribution's H3 of
