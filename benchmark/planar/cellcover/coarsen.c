@@ -7,26 +7,38 @@
  * to WGS84.
  *
  * A cover stored at one resolution is a column, and a question asked at a
- * coarser grain can either read that column through `cellToParent` or build a
- * fresh cover from the trajectory. The two are interchangeable only if the
- * coarsened path admits every candidate the rebuilt one admits: a prefilter
- * may only remove what it can prove does not qualify, so a coarsening that
- * loses a cell loses answers.
+ * coarser grain can either read that column down or build a fresh cover from
+ * the trajectory. The two are interchangeable only if the path read down
+ * admits every candidate the rebuilt one admits: a prefilter may only remove
+ * what it can prove does not qualify, so a coarsening that loses a cell loses
+ * answers.
  *
- * This program measures both halves over the trips and windows cellcover.c
- * reads (46_trips.sh, 45_windows.sql):
+ * This program reads the stored path down in three ways, each from the stored
+ * cells alone and never from the trajectory, and compares each with the cover
+ * rebuilt from the trajectory at the coarse resolution, over the trips and
+ * windows cellcover.c reads (46_trips.sh, 45_windows.sql):
  *
- *   soundness   whether the rebuilt cover is contained in the coarsened one,
- *               counted in cells and in trips that differ
- *   cost        the time to coarsen a stored path against the time to build
- *               the same grain from the trajectory
+ *   coarsened        the parent of every stored cell, `cellToParent`
+ *   parent + 1 ring  every such parent with its six neighbours, `gridDisk` of
+ *                    radius one around it
+ *   hexagon cover    the union, over the stored cells, of the exact coarse
+ *                    cover of each cell's boundary polygon, `geoToH3IndexSet`
+ *                    of `cellToBoundary`; the path lies in the union of its
+ *                    stored cells, so each of its points lies in a cell of
+ *                    this cover. The polygon is written as WKB from the
+ *                    vertices' doubles, since a decimal rounding of the
+ *                    vertices changes the cover of some cells. The cover of
+ *                    each distinct stored cell is computed once over the run
+ *                    and kept, up to a bounded table.
  *
- * Both paths are swept covers, each tested at the coarse resolution against
- * the windows' exact covers, the cells holding a point of the region, and
- * against those covers dilated by one grid ring. Ground truth is the exact
- * predicate of cellcover.c, the trip over the window's period meeting its
- * polygon, so the admitted counts of the two constructions are reported
- * against the same denominator the soundness sweep uses.
+ * For each path it reports the cells the rebuilt cover holds and the path
+ * lacks, counted in cells and in trips, the time to build it, and, per window
+ * and over all of them, the candidates it admits and the recall against the
+ * windows' exact covers, the cells holding a point of the region, and against
+ * those covers dilated by one grid ring. It also reports how far each rebuilt
+ * cell the coarsened path lacks lies from that path, in grid rings. Ground
+ * truth is the exact predicate of cellcover.c, the trip over the window's
+ * period meeting its polygon.
  *
  * Copyright (c) 2026, Esteban Zimanyi, Universite Libre de Bruxelles
  *
@@ -41,30 +53,70 @@
 
 #include "cellcover_common.h"
 
-/** The two ways to reach a cover at the coarse resolution */
-typedef enum { PATH_COARSENED, PATH_REBUILT, PATH_N } coarsePath;
+/** The ways to reach a cover at the coarse resolution, in the order they are reported */
+typedef enum { PATH_COARSENED, PATH_PARENT_RING, PATH_HEXAGON, PATH_REBUILT,
+  PATH_N } coarsePath;
 
-static const char *path_name[PATH_N] = { "coarsened", "rebuilt" };
+static const char *path_name[PATH_N] = { "coarsened", "parent + 1 ring",
+  "hexagon cover", "rebuilt" };
 
 /** The region covers each path is tested against, in the order they are reported */
 static const regionCover coarse_region[] = { REGION_EXACT, REGION_EXACT_RING };
 #define COARSE_REGION_N  2
 
+/** The largest ring distance counted apart; farther cells share one bucket */
+#define RING_MAX  8
+
+/** Initial slots of the hexagon cover table, a power of two */
+#define HEX_TABLE_INIT   (1 << 20)
+/** Slots the hexagon cover table grows to at most, a power of two: 134M
+ * slots of 24 bytes hold 67M stored cells in 3.2 GB, and a stored cell met
+ * once the table is full has its cover computed each time it is met */
+#define HEX_TABLE_MAX    (1 << 27)
+/** Rebuilt cells the hexagon cover lacks that are named on stderr */
+#define HEX_MISSING_NAMED  50
+
+/** What the run measured over one window */
+typedef struct
+{
+  int64  admitted[PATH_N][COARSE_REGION_N];  /**< trips the path admits */
+  int64  kept[PATH_N][COARSE_REGION_N];      /**< of the qualifying trips, those it admits */
+  int64  truth;                              /**< trips the exact predicate accepts */
+} WindowMeasure;
+
 /** What the run measured, accumulated over every trip */
 typedef struct
 {
-  int64  ncells[PATH_N];      /**< cells summed over the trips */
-  int64  admitted[PATH_N][COARSE_REGION_N];  /**< window pairs the cover admits */
-  int64  kept[PATH_N][COARSE_REGION_N];      /**< of the qualifying pairs, those it admits */
-  int64  truth;               /**< pairs the exact predicate accepts */
-  int64  errors;              /**< pairs the exact predicate cannot decide */
-  int64  stored_cells;        /**< cells of the stored path, before coarsening */
-  int64  missing_cells;       /**< cells the rebuilt cover holds and the
-                                *  coarsened one does not */
-  int64  trips_missing;       /**< trips carrying at least one such cell */
-  double coarsen_seconds;     /**< time reading the stored path down */
-  double rebuild_seconds;     /**< time building the coarse path from the trip */
+  int64  ncells[PATH_N];         /**< cells summed over the trips */
+  double seconds[PATH_N];        /**< time building each path */
+  int64  missing_cells[PATH_N];  /**< cells the rebuilt cover holds and the path lacks */
+  int64  trips_missing[PATH_N];  /**< trips carrying at least one such cell */
+  int64  extra_cells[PATH_N];    /**< cells the path holds and the rebuilt cover lacks */
+  int64  ring[RING_MAX + 2];     /**< rebuilt cells absent from the coarsened path,
+                                   *  by their ring distance to it, RING_MAX + 1
+                                   *  counting the farther ones */
+  int64  errors;                 /**< pairs the exact predicate cannot decide */
+  int64  stored_cells;           /**< cells of the stored paths */
+  int64  hex_hits, hex_misses;   /**< stored cells whose hexagon cover was
+                                   *  kept already, and computed */
+  int64  hex_uncached;           /**< of those computed, the ones the full
+                                   *  table could not keep */
 } Measure;
+
+/** One slot of the hexagon cover table */
+typedef struct
+{
+  H3Index key;       /**< the stored cell, 0 when empty */
+  int64   first;     /**< the first cell of its cover in hex_cells */
+  int32   n;         /**< the cells of its cover */
+} HexSlot;
+
+/** The hexagon cover of every distinct stored cell met so far: an open
+ * addressing table of slots over one array of cover cells */
+static HexSlot *hex_slots;
+static int64 hex_nslots, hex_used;
+static H3Index *hex_cells;
+static int64 hex_ncells, hex_capcells;
 
 static double
 now_seconds(void)
@@ -78,7 +130,7 @@ now_seconds(void)
  * @brief Return the cells of a stored path read down to a coarser resolution
  * @details Every cell of the stored path has exactly one ancestor at the
  * coarser resolution, so reading the path down is a map followed by the
- * deduplication every cover carries. The trajectory is never revisited.
+ * deduplication every cover carries.
  */
 static H3Index *
 cells_coarsen(const H3Index *in, int nin, int coarse_res, int *count)
@@ -96,30 +148,187 @@ cells_coarsen(const H3Index *in, int nin, int coarse_res, int *count)
 }
 
 /**
+ * @brief Return the exact coarse cover of one stored cell's boundary polygon
+ * @details The polygon is the cell's `cellToBoundary` vertices in longitude
+ * and latitude, and its cover is `geoToH3IndexSet` at the coarse resolution.
+ * The returned array belongs to the caller.
+ */
+static H3Index *
+cell_hexagon_cover(H3Index cell, int coarse_res, int *count)
+{
+  *count = 0;
+  CellBoundary b;
+  if (cellToBoundary(cell, &b) != E_SUCCESS || b.numVerts < 3)
+    return NULL;
+  /* WKB: little endian, type 3 (polygon), one ring of numVerts + 1 points */
+  uint8_t wkb[16 + 16 * (MAX_CELL_BNDRY_VERTS + 1)];
+  size_t off = 0;
+  uint32_t word;
+  wkb[off++] = 1;
+  word = 3;
+  memcpy(wkb + off, &word, 4); off += 4;
+  word = 1;
+  memcpy(wkb + off, &word, 4); off += 4;
+  word = (uint32_t) b.numVerts + 1;
+  memcpy(wkb + off, &word, 4); off += 4;
+  for (int i = 0; i <= b.numVerts; i++)
+  {
+    const LatLng *v = &b.verts[i % b.numVerts];
+    double x = radsToDegs(v->lng), y = radsToDegs(v->lat);
+    memcpy(wkb + off, &x, 8); off += 8;
+    memcpy(wkb + off, &y, 8); off += 8;
+  }
+  GSERIALIZED *gs = geo_from_ewkb(wkb, off, GEO_SRID);
+  if (gs == NULL)
+    return NULL;
+  Set *s = geo_to_h3index_set(gs, coarse_res);
+  free(gs);
+  if (s == NULL)
+    return NULL;
+  H3Index *cells = h3indexset_values(s, count);
+  free(s);
+  return cells;
+}
+
+static uint64_t
+cell_hash(H3Index cell)
+{
+  uint64_t z = (uint64_t) cell + 0x9e3779b97f4a7c15ULL;
+  z = (z ^ (z >> 30)) * 0xbf58476d1ce4e5b9ULL;
+  z = (z ^ (z >> 27)) * 0x94d049bb133111ebULL;
+  return z ^ (z >> 31);
+}
+
+/**
+ * @brief Return the slot holding a stored cell, or the empty slot where it
+ * belongs
+ */
+static HexSlot *
+hex_lookup(H3Index cell)
+{
+  int64 i = (int64) (cell_hash(cell) & (uint64_t) (hex_nslots - 1));
+  while (hex_slots[i].key != (H3Index) 0 && hex_slots[i].key != cell)
+    i = (i + 1) & (hex_nslots - 1);
+  return &hex_slots[i];
+}
+
+/**
+ * @brief Keep the hexagon cover of a stored cell, doubling the table when it
+ * is half full, and return its slot, or NULL when the table is full
+ */
+static HexSlot *
+hex_insert(H3Index cell, const H3Index *cells, int n)
+{
+  if (2 * (hex_used + 1) > hex_nslots && hex_nslots >= HEX_TABLE_MAX)
+    return NULL;
+  if (2 * (hex_used + 1) > hex_nslots)
+  {
+    HexSlot *old = hex_slots;
+    int64 nold = hex_nslots;
+    hex_nslots *= 2;
+    hex_slots = calloc((size_t) hex_nslots, sizeof(HexSlot));
+    if (hex_slots == NULL)
+    {
+      fprintf(stderr, "cannot grow the hexagon cover table to %" PRId64
+        " slots\n", hex_nslots);
+      exit(1);
+    }
+    for (int64 i = 0; i < nold; i++)
+      if (old[i].key != (H3Index) 0)
+        *hex_lookup(old[i].key) = old[i];
+    free(old);
+  }
+  if (hex_ncells + n > hex_capcells)
+  {
+    hex_capcells = (hex_ncells + n) * 2;
+    hex_cells = realloc(hex_cells, (size_t) hex_capcells * sizeof(H3Index));
+    if (hex_cells == NULL)
+    {
+      fprintf(stderr, "cannot grow the hexagon cover cells to %" PRId64 "\n",
+        hex_capcells);
+      exit(1);
+    }
+  }
+  HexSlot *e = hex_lookup(cell);
+  e->key = cell;
+  e->first = hex_ncells;
+  e->n = n;
+  memcpy(hex_cells + hex_ncells, cells, (size_t) n * sizeof(H3Index));
+  hex_ncells += n;
+  hex_used++;
+  return e;
+}
+
+/**
+ * @brief Return the union of the hexagon covers of the stored cells
+ */
+static H3Index *
+cells_hexagon_cover(const H3Index *in, int nin, int coarse_res, int *count,
+  Measure *m)
+{
+  int cap = (nin > 0 ? nin : 1) * 3, n = 0;
+  H3Index *out = malloc((size_t) cap * sizeof(H3Index));
+  for (int i = 0; i < nin; i++)
+  {
+    HexSlot *e = hex_lookup(in[i]);
+    H3Index *computed = NULL;
+    const H3Index *cells;
+    int nc;
+    if (e->key == in[i])
+    {
+      m->hex_hits++;
+      cells = hex_cells + e->first;
+      nc = e->n;
+    }
+    else
+    {
+      m->hex_misses++;
+      computed = cell_hexagon_cover(in[i], coarse_res, &nc);
+      if (computed == NULL)
+      {
+        fprintf(stderr, "no hexagon cover for stored cell %" PRIx64 "\n",
+          (uint64_t) in[i]);
+        exit(1);
+      }
+      if (hex_insert(in[i], computed, nc) == NULL)
+        m->hex_uncached++;
+      cells = computed;
+    }
+    if (n + nc > cap)
+    {
+      cap = (n + nc) * 2;
+      out = realloc(out, (size_t) cap * sizeof(H3Index));
+    }
+    memcpy(out + n, cells, (size_t) nc * sizeof(H3Index));
+    n += nc;
+    free(computed);
+  }
+  *count = cells_sort_uniq(out, n);
+  return out;
+}
+
+/**
  * @brief Return how many cells of @p b are absent from @p a
  * @details Both arrays are sorted and duplicate-free, so one merge answers
- * it. A non-zero count is a cell the rebuilt cover reaches and the coarsened
- * one does not, which is a candidate the coarsened path would drop.
+ * it. When @p absent is given, the absent cells are written to it.
  */
 static int
-cells_missing(const H3Index *a, int na, const H3Index *b, int nb)
+cells_missing(const H3Index *a, int na, const H3Index *b, int nb,
+  H3Index *absent)
 {
   int i = 0, j = 0, missing = 0;
   while (j < nb)
   {
-    if (i >= na)
-    {
-      missing += nb - j;
-      break;
-    }
-    if (a[i] == b[j])
+    if (i < na && a[i] == b[j])
     {
       i++; j++;
     }
-    else if (a[i] < b[j])
+    else if (i < na && a[i] < b[j])
       i++;
     else
     {
+      if (absent != NULL)
+        absent[missing] = b[j];
       missing++;
       j++;
     }
@@ -128,11 +337,42 @@ cells_missing(const H3Index *a, int na, const H3Index *b, int nb)
 }
 
 /**
- * @brief Measure one trip under both ways of reaching the coarse cover
+ * @brief Return the ring distance from a cell to the nearest cell of a sorted
+ * array, or RING_MAX + 1 when it is farther than RING_MAX
+ */
+static int
+ring_distance(H3Index cell, const H3Index *cells, int ncells)
+{
+  for (int k = 1; k <= RING_MAX; k++)
+  {
+    int64_t size;
+    if (maxGridDiskSize(k, &size) != E_SUCCESS)
+      break;
+    H3Index *disk = calloc((size_t) size, sizeof(H3Index));
+    bool found = false;
+    if (gridDisk(cell, k, disk) == E_SUCCESS)
+    {
+      int n = 0;
+      for (int64_t i = 0; i < size; i++)
+        if (disk[i] != (H3Index) 0)
+          disk[n++] = disk[i];
+      n = cells_sort_uniq(disk, n);
+      found = cells_intersect(disk, n, cells, ncells);
+    }
+    free(disk);
+    if (found)
+      return k;
+  }
+  return RING_MAX + 1;
+}
+
+/**
+ * @brief Measure one trip under every way of reaching the coarse cover
  */
 static void
-trip_measure(TInstant **instants, int ninst, const Window *w, int nwin,
-  int stored_res, int coarse_res, Measure *m, bool *admits)
+trip_measure(int64 trip_id, TInstant **instants, int ninst, const Window *w,
+  int nwin, int stored_res, int coarse_res, Measure *m, WindowMeasure *wm,
+  bool *admits)
 {
   TSequence *linear = tsequence_make(instants, ninst, true, true, LINEAR,
     true);
@@ -151,21 +391,54 @@ trip_measure(TInstant **instants, int ninst, const Window *w, int nwin,
   cells[PATH_COARSENED] = cells_coarsen(stored_cells, nstored, coarse_res,
     &ncells[PATH_COARSENED]);
   double t1 = now_seconds();
-  m->coarsen_seconds += t1 - t0;
+  m->seconds[PATH_COARSENED] += t1 - t0;
+
+  t0 = now_seconds();
+  int nparent;
+  H3Index *parent = cells_coarsen(stored_cells, nstored, coarse_res, &nparent);
+  cells[PATH_PARENT_RING] = cells_dilate(parent, nparent,
+    &ncells[PATH_PARENT_RING]);
+  t1 = now_seconds();
+  m->seconds[PATH_PARENT_RING] += t1 - t0;
+  free(parent);
+
+  t0 = now_seconds();
+  cells[PATH_HEXAGON] = cells_hexagon_cover(stored_cells, nstored, coarse_res,
+    &ncells[PATH_HEXAGON], m);
+  t1 = now_seconds();
+  m->seconds[PATH_HEXAGON] += t1 - t0;
 
   t0 = now_seconds();
   Temporal *rebuilt = tgeompoint_to_th3index(trip, coarse_res);
   cells[PATH_REBUILT] = th3index_cells(rebuilt, &ncells[PATH_REBUILT]);
   t1 = now_seconds();
-  m->rebuild_seconds += t1 - t0;
+  m->seconds[PATH_REBUILT] += t1 - t0;
 
-  int missing = cells_missing(cells[PATH_COARSENED], ncells[PATH_COARSENED],
-    cells[PATH_REBUILT], ncells[PATH_REBUILT]);
-  m->missing_cells += missing;
-  if (missing > 0)
-    m->trips_missing++;
+  H3Index *absent = malloc((size_t) (ncells[PATH_REBUILT] > 0 ?
+    ncells[PATH_REBUILT] : 1) * sizeof(H3Index));
   for (int p = 0; p < PATH_N; p++)
+  {
     m->ncells[p] += ncells[p];
+    if (p == PATH_REBUILT)
+      continue;
+    int missing = cells_missing(cells[p], ncells[p], cells[PATH_REBUILT],
+      ncells[PATH_REBUILT], absent);
+    m->missing_cells[p] += missing;
+    if (missing > 0)
+      m->trips_missing[p]++;
+    m->extra_cells[p] += cells_missing(cells[PATH_REBUILT],
+      ncells[PATH_REBUILT], cells[p], ncells[p], NULL);
+    if (p == PATH_COARSENED)
+      for (int i = 0; i < missing; i++)
+        m->ring[ring_distance(absent[i], cells[p], ncells[p])]++;
+    if (p == PATH_HEXAGON)
+      for (int i = 0; i < missing; i++)
+        if (m->missing_cells[p] - missing + i < HEX_MISSING_NAMED)
+          fprintf(stderr, "hexagon cover lacks rebuilt cell %" PRIx64
+            " of trip %" PRId64 " (%d stored cells)\n", (uint64_t) absent[i],
+            trip_id, nstored);
+  }
+  free(absent);
 
   /* A cover admits a window on the window's polygon alone, so the windows
    * sharing a polygon share the answer */
@@ -196,15 +469,15 @@ trip_measure(TInstant **instants, int ninst, const Window *w, int nwin,
       free(during);
     }
     if (qualifies)
-      m->truth++;
+      wm[k].truth++;
     for (int p = 0; p < PATH_N; p++)
       for (int j = 0; j < COARSE_REGION_N; j++)
       {
         bool ad = admits[(p * COARSE_REGION_N + j) * nwin + w[k].geom];
         if (ad)
-          m->admitted[p][j]++;
+          wm[k].admitted[p][j]++;
         if (qualifies && ad)
-          m->kept[p][j]++;
+          wm[k].kept[p][j]++;
       }
   }
 
@@ -221,28 +494,56 @@ trip_measure(TInstant **instants, int ninst, const Window *w, int nwin,
  */
 static void
 emit_results(FILE *out, int64 ntrips, int stored_res, int coarse_res,
-  const Measure *m)
+  const Window *w, int nwin, const Measure *m, const WindowMeasure *wm)
 {
   fprintf(out, "trips,%" PRId64 "\n", ntrips);
   fprintf(out, "stored_res,%d\n", stored_res);
   fprintf(out, "coarse_res,%d\n", coarse_res);
   fprintf(out, "predicate_errors,%" PRId64 "\n", m->errors);
   fprintf(out, "stored_cells,%" PRId64 "\n", m->stored_cells);
-  fprintf(out, "coarsen_seconds,%.3f\n", m->coarsen_seconds);
-  fprintf(out, "rebuild_seconds,%.3f\n", m->rebuild_seconds);
-  fprintf(out, "coarsen_over_rebuild,%.6f\n",
-    (m->rebuild_seconds > 0.0) ? m->coarsen_seconds / m->rebuild_seconds : 0.0);
-  fprintf(out, "missing_cells,%" PRId64 "\n", m->missing_cells);
-  fprintf(out, "trips_missing,%" PRId64 "\n", m->trips_missing);
-  fprintf(out, "path,region_cover,cells,candidates,truth,kept,recall\n");
+  fprintf(out, "hexagon_computed_covers,%" PRId64 "\n", m->hex_misses);
+  fprintf(out, "hexagon_kept_covers_read,%" PRId64 "\n", m->hex_hits);
+  fprintf(out, "hexagon_covers_not_kept,%" PRId64 "\n", m->hex_uncached);
+  fprintf(out, "path,cells,seconds,over_rebuild,missing_cells,trips_missing,"
+    "extra_cells\n");
+  for (int p = 0; p < PATH_N; p++)
+    fprintf(out, "%s,%" PRId64 ",%.3f,%.6f,%" PRId64 ",%" PRId64 ",%" PRId64
+      "\n", path_name[p], m->ncells[p], m->seconds[p],
+      (m->seconds[PATH_REBUILT] > 0.0) ?
+        m->seconds[p] / m->seconds[PATH_REBUILT] : 0.0,
+      m->missing_cells[p], m->trips_missing[p], m->extra_cells[p]);
+  fprintf(out, "ring_distance_to_coarsened,rebuilt_cells\n");
+  for (int k = 1; k <= RING_MAX + 1; k++)
+    fprintf(out, "%s%d,%" PRId64 "\n", (k > RING_MAX) ? ">" : "",
+      (k > RING_MAX) ? RING_MAX : k, m->ring[k]);
+  fprintf(out, "path,region_cover,window,candidates,truth,kept,recall\n");
   for (int p = 0; p < PATH_N; p++)
     for (int j = 0; j < COARSE_REGION_N; j++)
     {
-      double recall = (m->truth > 0) ?
-        (double) m->kept[p][j] / (double) m->truth : 1.0;
-      fprintf(out, "%s,%s,%" PRId64 ",%" PRId64 ",%" PRId64 ",%" PRId64
-        ",%.6f\n", path_name[p], region_name[coarse_region[j]], m->ncells[p],
-        m->admitted[p][j], m->truth, m->kept[p][j], recall);
+      int64 all_admitted = 0, all_kept = 0, all_truth = 0;
+      for (int k = 0; k <= nwin; k++)
+      {
+        int64 admitted, kept, truth;
+        if (k < nwin)
+        {
+          admitted = wm[k].admitted[p][j];
+          kept = wm[k].kept[p][j];
+          truth = wm[k].truth;
+          all_admitted += admitted;
+          all_kept += kept;
+          all_truth += truth;
+        }
+        else
+        {
+          admitted = all_admitted;
+          kept = all_kept;
+          truth = all_truth;
+        }
+        double recall = (truth > 0) ? (double) kept / (double) truth : 1.0;
+        fprintf(out, "%s,%s,%s,%" PRId64 ",%" PRId64 ",%" PRId64 ",%.6f\n",
+          path_name[p], region_name[coarse_region[j]],
+          (k < nwin) ? w[k].name : "all", admitted, truth, kept, recall);
+      }
     }
 }
 
@@ -254,14 +555,15 @@ emit_results(FILE *out, int64 ntrips, int stored_res, int coarse_res,
  */
 static void
 checkpoint_results(const char *path, int64 ntrips, int stored_res,
-  int coarse_res, const Measure *m)
+  int coarse_res, const Window *w, int nwin, const Measure *m,
+  const WindowMeasure *wm)
 {
   char tmp[PATH_MAX];
   snprintf(tmp, sizeof(tmp), "%s.part", path);
   FILE *out = fopen(tmp, "w");
   if (out == NULL)
     return;
-  emit_results(out, ntrips, stored_res, coarse_res, m);
+  emit_results(out, ntrips, stored_res, coarse_res, w, nwin, m, wm);
   fflush(out);
   fsync(fileno(out));
   fclose(out);
@@ -306,8 +608,17 @@ main(int argc, char **argv)
 
   Measure m;
   memset(&m, 0, sizeof(m));
+  WindowMeasure *wm = calloc((size_t) (nwin > 0 ? nwin : 1),
+    sizeof(WindowMeasure));
   bool *admits = calloc((size_t) (PATH_N * COARSE_REGION_N *
     (nwin > 0 ? nwin : 1)), sizeof(bool));
+  hex_nslots = HEX_TABLE_INIT;
+  hex_slots = calloc((size_t) hex_nslots, sizeof(HexSlot));
+  if (hex_slots == NULL)
+  {
+    fprintf(stderr, "cannot allocate the hexagon cover table\n");
+    return 1;
+  }
 
   TripSource src;
   if (! trip_source_open(&src, trips_path))
@@ -328,14 +639,14 @@ main(int argc, char **argv)
 
     if ((eof || (parsed && r.id != cur_id)) && ninst >= 2)
     {
-      trip_measure(instants, ninst, w, nwin, stored_res, coarse_res, &m,
-        admits);
+      trip_measure(cur_id, instants, ninst, w, nwin, stored_res, coarse_res,
+        &m, wm, admits);
       ntrips++;
       if (ntrips % 1000 == 0)
       {
         fprintf(stderr, "\r  trips %" PRId64, ntrips);
         checkpoint_results(checkpoint_path, ntrips, stored_res, coarse_res,
-          &m);
+          w, nwin, &m, wm);
       }
     }
     if (eof || (parsed && r.id != cur_id))
@@ -358,9 +669,12 @@ main(int argc, char **argv)
   trip_source_close(&src);
   fprintf(stderr, "\r  trips %" PRId64 "\n", ntrips);
 
-  emit_results(stdout, ntrips, stored_res, coarse_res, &m);
+  emit_results(stdout, ntrips, stored_res, coarse_res, w, nwin, &m, wm);
   remove(checkpoint_path);
   windows_free(w, nwin);
+  free(hex_slots);
+  free(hex_cells);
+  free(wm);
   free(admits);
   free(instants);
   meos_finalize();
