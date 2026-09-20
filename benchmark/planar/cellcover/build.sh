@@ -16,14 +16,18 @@
 #
 #   ./build.sh <prefix>
 #
-# Environment: H3_INCLUDE_DIR (/usr/local/include/h3) and H3_LIBRARY (/usr/local/lib/libh3.a),
-# the values of the same names in the MEOS build's CMakeCache.txt.
+# Environment: H3_INCLUDE_DIR and H3_LIBRARY, REQUIRED, carrying the values of the same names in
+# the MEOS build's CMakeCache.txt. They are required rather than defaulted because a default names
+# a path whose H3 release is whatever that path happens to hold: the harness and MEOS answer from
+# ONE release, and a default that silently holds another states a cover neither of them computes.
+# A default that holds nothing at all is the kinder failure, and only luck decides which one a
+# machine has.
 set -euo pipefail
 
 D="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PREFIX=${1:?prefix is required}
-H3_INCLUDE_DIR=${H3_INCLUDE_DIR:-/usr/local/include/h3}
-H3_LIBRARY=${H3_LIBRARY:-/usr/local/lib/libh3.a}
+H3_INCLUDE_DIR=${H3_INCLUDE_DIR:?H3_INCLUDE_DIR is required: the h3 include directory the MEOS prefix was built against}
+H3_LIBRARY=${H3_LIBRARY:?H3_LIBRARY is required: the static libh3.a of the release the MEOS prefix was built against}
 CFLAGS="-O2 -Wall -Wextra"
 
 [ -f "$PREFIX/include/meos.h" ] || { echo "no meos.h under $PREFIX" >&2; exit 1; }
