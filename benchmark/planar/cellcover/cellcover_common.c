@@ -17,7 +17,7 @@
 
 const char *trip_name[TRIP_N] = { "per-instant", "swept segment" };
 const char *region_name[REGION_N] = { "centre containment",
-  "intersecting + 1 ring", "intersecting + 2 rings" };
+  "exact cover", "exact cover + 1 ring" };
 
 /*****************************************************************************
  * Cell arrays
@@ -198,13 +198,16 @@ region_cover_centres(const char *wkt, int resolution, int *count)
 }
 
 /**
- * @brief Return the region cover MEOS builds, every cell the region meets
- * @details This is `geoToH3IndexSet` on the region's WGS84 boundary. The
- * cells are read from the set's text form, each through `h3index_in`, the
- * twin of the `h3index_out` that wrote it.
+ * @brief Return the region cover MEOS builds, every cell holding a point of
+ * the region
+ * @details This is `geoToH3IndexSet` on the region's WGS84 polygon: the cells
+ * of its ring together with the cells the ring encloses, each point assigned
+ * to its cell as `latLngToCell` assigns it, which is the assignment the trip
+ * covers take their cells from. The cells are read from the set's text form,
+ * each through `h3index_in`, the twin of the `h3index_out` that wrote it.
  */
 static H3Index *
-region_cover_ring(const char *wkt, int resolution, int *count)
+region_cover_exact(const char *wkt, int resolution, int *count)
 {
   *count = 0;
   size_t len = strlen(wkt) + 16;
@@ -249,11 +252,11 @@ region_cover_ring(const char *wkt, int resolution, int *count)
 }
 
 /**
- * @brief Return a cover dilated by one further grid ring
- * @details The paper's listing wraps `geoToH3IndexSet` in a `gridDisk` of
- * radius one, on the reading that the constructor answers the cells whose
- * centre falls in the region. It already dilates, so the wrapper adds a
- * second ring. This arm measures what that costs.
+ * @brief Return a cover dilated by one grid ring
+ * @details Each cell is replaced by its `gridDisk` of radius one, the cell and
+ * its six neighbours. Applied to the exact cover, this is the arm that
+ * measures what a ring around the region costs and what it adds beyond the
+ * cells that hold a point of the region.
  */
 H3Index *
 cells_dilate(const H3Index *in, int nin, int *count)
@@ -282,6 +285,45 @@ cells_dilate(const H3Index *in, int nin, int *count)
   return out;
 }
 
+/**
+ * @brief Refuse a MEOS whose `geoToH3IndexSet` is not the exact cover
+ * @details The arms are named for the cover the linked MEOS builds, and a
+ * MEOS whose constructor answers more than the cells holding a point of the
+ * geometry would measure another cover under the same name. A triangle two
+ * billionths of a degree wide around a cell's centre lies in that cell alone
+ * at every resolution up to 15, so its exact cover is that one cell; a
+ * constructor that dilates answers the cell's neighbours too.
+ */
+static void
+region_cover_check_exact(int resolution)
+{
+  LatLng ll = { degsToRads(55.0), degsToRads(11.0) };
+  H3Index cell;
+  if (latLngToCell(&ll, resolution, &cell) != E_SUCCESS ||
+      cellToLatLng(cell, &ll) != E_SUCCESS)
+  {
+    fprintf(stderr, "region cover check: no cell at resolution %d\n",
+      resolution);
+    exit(1);
+  }
+  double lon = radsToDegs(ll.lng), lat = radsToDegs(ll.lat), d = 1e-9;
+  char wkt[256];
+  snprintf(wkt, sizeof(wkt), "POLYGON((%.12f %.12f,%.12f %.12f,%.12f %.12f,"
+    "%.12f %.12f))", lon - d, lat - d, lon + d, lat - d, lon, lat + d,
+    lon - d, lat - d);
+  int n;
+  H3Index *cells = region_cover_exact(wkt, resolution, &n);
+  bool exact = (n == 1 && cells[0] == cell);
+  free(cells);
+  if (! exact)
+  {
+    fprintf(stderr, "region cover check: geoToH3IndexSet answers %d cells for "
+      "a triangle inside one cell at resolution %d, so the linked MEOS does "
+      "not build the exact cover\n", n, resolution);
+    exit(1);
+  }
+}
+
 /*****************************************************************************
  * Input
  *****************************************************************************/
@@ -298,6 +340,7 @@ cells_dilate(const H3Index *in, int nin, int *count)
 Window *
 windows_read(const char *path, int resolution, int *count)
 {
+  region_cover_check_exact(resolution);
   FILE *f = fopen(path, "r");
   if (f == NULL)
   {
@@ -341,10 +384,10 @@ windows_read(const char *path, int resolution, int *count)
     {
       cur->cells[REGION_CENTRES] = region_cover_centres(cur->wkt, resolution,
         &cur->ncells[REGION_CENTRES]);
-      cur->cells[REGION_RING] = region_cover_ring(cur->wkt, resolution,
-        &cur->ncells[REGION_RING]);
-      cur->cells[REGION_RING2] = cells_dilate(cur->cells[REGION_RING],
-        cur->ncells[REGION_RING], &cur->ncells[REGION_RING2]);
+      cur->cells[REGION_EXACT] = region_cover_exact(cur->wkt, resolution,
+        &cur->ncells[REGION_EXACT]);
+      cur->cells[REGION_EXACT_RING] = cells_dilate(cur->cells[REGION_EXACT],
+        cur->ncells[REGION_EXACT], &cur->ncells[REGION_EXACT_RING]);
     }
     else
       for (int j = 0; j < REGION_N; j++)

@@ -21,11 +21,12 @@
  *   cost        the time to coarsen a stored path against the time to build
  *               the same grain from the trajectory
  *
- * Both paths are swept covers, each tested against the windows' ring covers
- * at the coarse resolution. Ground truth is the exact predicate of
- * cellcover.c, the trip over the window's period meeting its polygon, so the
- * admitted counts of the two constructions are reported against the same
- * denominator the soundness sweep uses.
+ * Both paths are swept covers, each tested at the coarse resolution against
+ * the windows' exact covers, the cells holding a point of the region, and
+ * against those covers dilated by one grid ring. Ground truth is the exact
+ * predicate of cellcover.c, the trip over the window's period meeting its
+ * polygon, so the admitted counts of the two constructions are reported
+ * against the same denominator the soundness sweep uses.
  *
  * Copyright (c) 2026, Esteban Zimanyi, Universite Libre de Bruxelles
  *
@@ -45,12 +46,16 @@ typedef enum { PATH_COARSENED, PATH_REBUILT, PATH_N } coarsePath;
 
 static const char *path_name[PATH_N] = { "coarsened", "rebuilt" };
 
+/** The region covers each path is tested against, in the order they are reported */
+static const regionCover coarse_region[] = { REGION_EXACT, REGION_EXACT_RING };
+#define COARSE_REGION_N  2
+
 /** What the run measured, accumulated over every trip */
 typedef struct
 {
   int64  ncells[PATH_N];      /**< cells summed over the trips */
-  int64  admitted[PATH_N];    /**< window pairs the cover admits */
-  int64  kept[PATH_N];        /**< of the qualifying pairs, those it admits */
+  int64  admitted[PATH_N][COARSE_REGION_N];  /**< window pairs the cover admits */
+  int64  kept[PATH_N][COARSE_REGION_N];      /**< of the qualifying pairs, those it admits */
   int64  truth;               /**< pairs the exact predicate accepts */
   int64  errors;              /**< pairs the exact predicate cannot decide */
   int64  stored_cells;        /**< cells of the stored path, before coarsening */
@@ -169,8 +174,10 @@ trip_measure(TInstant **instants, int ninst, const Window *w, int nwin,
     if (w[k].geom != k)
       continue;
     for (int p = 0; p < PATH_N; p++)
-      admits[p * nwin + k] = cells_intersect(cells[p], ncells[p],
-        w[k].cells[REGION_RING], w[k].ncells[REGION_RING]);
+      for (int j = 0; j < COARSE_REGION_N; j++)
+        admits[(p * COARSE_REGION_N + j) * nwin + k] = cells_intersect(
+          cells[p], ncells[p], w[k].cells[coarse_region[j]],
+          w[k].ncells[coarse_region[j]]);
   }
 
   for (int k = 0; k < nwin; k++)
@@ -191,13 +198,14 @@ trip_measure(TInstant **instants, int ninst, const Window *w, int nwin,
     if (qualifies)
       m->truth++;
     for (int p = 0; p < PATH_N; p++)
-    {
-      bool ad = admits[p * nwin + w[k].geom];
-      if (ad)
-        m->admitted[p]++;
-      if (qualifies && ad)
-        m->kept[p]++;
-    }
+      for (int j = 0; j < COARSE_REGION_N; j++)
+      {
+        bool ad = admits[(p * COARSE_REGION_N + j) * nwin + w[k].geom];
+        if (ad)
+          m->admitted[p][j]++;
+        if (qualifies && ad)
+          m->kept[p][j]++;
+      }
   }
 
   for (int p = 0; p < PATH_N; p++)
@@ -226,15 +234,16 @@ emit_results(FILE *out, int64 ntrips, int stored_res, int coarse_res,
     (m->rebuild_seconds > 0.0) ? m->coarsen_seconds / m->rebuild_seconds : 0.0);
   fprintf(out, "missing_cells,%" PRId64 "\n", m->missing_cells);
   fprintf(out, "trips_missing,%" PRId64 "\n", m->trips_missing);
-  fprintf(out, "path,cells,candidates,truth,kept,recall\n");
+  fprintf(out, "path,region_cover,cells,candidates,truth,kept,recall\n");
   for (int p = 0; p < PATH_N; p++)
-  {
-    double recall = (m->truth > 0) ? (double) m->kept[p] / (double) m->truth
-      : 1.0;
-    fprintf(out, "%s,%" PRId64 ",%" PRId64 ",%" PRId64 ",%" PRId64 ",%.6f\n",
-      path_name[p], m->ncells[p], m->admitted[p], m->truth, m->kept[p],
-      recall);
-  }
+    for (int j = 0; j < COARSE_REGION_N; j++)
+    {
+      double recall = (m->truth > 0) ?
+        (double) m->kept[p][j] / (double) m->truth : 1.0;
+      fprintf(out, "%s,%s,%" PRId64 ",%" PRId64 ",%" PRId64 ",%" PRId64
+        ",%.6f\n", path_name[p], region_name[coarse_region[j]], m->ncells[p],
+        m->admitted[p][j], m->truth, m->kept[p][j], recall);
+    }
 }
 
 /**
@@ -297,7 +306,8 @@ main(int argc, char **argv)
 
   Measure m;
   memset(&m, 0, sizeof(m));
-  bool *admits = calloc((size_t) (PATH_N * (nwin > 0 ? nwin : 1)), sizeof(bool));
+  bool *admits = calloc((size_t) (PATH_N * COARSE_REGION_N *
+    (nwin > 0 ? nwin : 1)), sizeof(bool));
 
   TripSource src;
   if (! trip_source_open(&src, trips_path))
