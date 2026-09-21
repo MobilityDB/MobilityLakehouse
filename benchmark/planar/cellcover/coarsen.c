@@ -19,6 +19,10 @@
  * windows cellcover.c reads (46_trips.sh, 45_windows.sql):
  *
  *   coarsened        the parent of every stored cell, `cellToParent`
+ *   neighbour parents the parents of every stored cell and of its six
+ *                    `gridDisk` neighbours, taken two resolutions at a time,
+ *                    which holds every cell the stored one reaches and costs
+ *                    the index arithmetic alone
  *   parent + 1 ring  every such parent with its six neighbours, `gridDisk` of
  *                    radius one around it
  *   hexagon cover    the union, over the stored cells, of the exact coarse
@@ -56,11 +60,11 @@
 #include "cellcover_common.h"
 
 /** The ways to reach a cover at the coarse resolution, in the order they are reported */
-typedef enum { PATH_COARSENED, PATH_PARENT_RING, PATH_HEXAGON, PATH_REBUILT,
-  PATH_N } coarsePath;
+typedef enum { PATH_COARSENED, PATH_NEIGHBOUR, PATH_PARENT_RING, PATH_HEXAGON,
+  PATH_REBUILT, PATH_N } coarsePath;
 
-static const char *path_name[PATH_N] = { "coarsened", "parent + 1 ring",
-  "hexagon cover", "rebuilt" };
+static const char *path_name[PATH_N] = { "coarsened", "neighbour parents",
+  "parent + 1 ring", "hexagon cover", "rebuilt" };
 
 /** The region covers each path is tested against, in the order they are reported */
 static const regionCover coarse_region[] = { REGION_EXACT, REGION_EXACT_RING };
@@ -126,6 +130,57 @@ now_seconds(void)
   struct timespec t;
   clock_gettime(CLOCK_MONOTONIC, &t);
   return (double) t.tv_sec + (double) t.tv_nsec / 1e9;
+}
+
+/**
+ * @brief Return the parents of each stored cell and of its neighbours
+ * @details A cell reaches, at a resolution one or two levels coarser, no cell
+ * the parents of its `gridDisk(cell, 1)` neighbours do not already state; the
+ * probe `~/cpwork/h3-cellcover/table.c` reads 0 cells missing against the
+ * exact cover over 300,000 cells drawn over the whole Earth and over every
+ * cell within four rings of each of the twelve pentagons, and 3,473 missing
+ * at a gap of three, so a wider gap is taken two levels at a time. The cover
+ * so built holds cells the exact one does not, which is what a conservative
+ * cover is free to do, and it costs the index arithmetic alone.
+ */
+static H3Index *
+cells_neighbour_parents(const H3Index *in, int nin, int stored_res,
+  int coarse_res, int *count)
+{
+  int cap = (nin > 0 ? nin : 1) * 7;
+  H3Index *cur = calloc((size_t) cap, sizeof(H3Index));
+  int ncur = 0;
+  for (int i = 0; i < nin; i++)
+    cur[ncur++] = in[i];
+  int res = stored_res;
+  while (res > coarse_res)
+  {
+    int target = res - ((res - coarse_res >= 2) ? 2 : 1);
+    int ocap = ncur * 7 + 1;
+    H3Index *out = calloc((size_t) ocap, sizeof(H3Index));
+    int n = 0;
+    for (int i = 0; i < ncur; i++)
+    {
+      H3Index disk[7];
+      if (gridDisk(cur[i], 1, disk) != E_SUCCESS)
+        continue;
+      for (int k = 0; k < 7; k++)
+      {
+        H3Index parent;
+        if (disk[k] == 0 ||
+            cellToParent(disk[k], target, &parent) != E_SUCCESS)
+          continue;
+        out[n++] = parent;
+      }
+    }
+    n = cells_sort_uniq(out, n);
+    free(cur);
+    cur = out;
+    ncur = n;
+    res = target;
+  }
+  *count = ncur;
+  return cur;
 }
 
 /**
@@ -371,6 +426,12 @@ trip_measure(int64 trip_id, TInstant **instants, int ninst, const Window *w,
     &ncells[PATH_COARSENED]);
   double t1 = now_seconds();
   m->seconds[PATH_COARSENED] += t1 - t0;
+
+  t0 = now_seconds();
+  cells[PATH_NEIGHBOUR] = cells_neighbour_parents(stored_cells, nstored,
+    stored_res, coarse_res, &ncells[PATH_NEIGHBOUR]);
+  t1 = now_seconds();
+  m->seconds[PATH_NEIGHBOUR] += t1 - t0;
 
   t0 = now_seconds();
   int nparent;
