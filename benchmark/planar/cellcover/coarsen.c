@@ -157,32 +157,7 @@ static H3Index *
 cell_hexagon_cover(H3Index cell, int coarse_res, int *count)
 {
   *count = 0;
-  CellBoundary b;
-  if (cellToBoundary(cell, &b) != E_SUCCESS || b.numVerts < 3)
-    return NULL;
-  /* WKB: little endian, type 3 (polygon), one ring of numVerts + 1 points */
-  uint8_t wkb[16 + 16 * (MAX_CELL_BNDRY_VERTS + 1)];
-  size_t off = 0;
-  uint32_t word;
-  wkb[off++] = 1;
-  word = 3;
-  memcpy(wkb + off, &word, 4); off += 4;
-  word = 1;
-  memcpy(wkb + off, &word, 4); off += 4;
-  word = (uint32_t) b.numVerts + 1;
-  memcpy(wkb + off, &word, 4); off += 4;
-  for (int i = 0; i <= b.numVerts; i++)
-  {
-    const LatLng *v = &b.verts[i % b.numVerts];
-    double x = radsToDegs(v->lng), y = radsToDegs(v->lat);
-    memcpy(wkb + off, &x, 8); off += 8;
-    memcpy(wkb + off, &y, 8); off += 8;
-  }
-  GSERIALIZED *gs = geo_from_ewkb(wkb, off, GEO_SRID);
-  if (gs == NULL)
-    return NULL;
-  Set *s = geo_to_h3index_set(gs, coarse_res);
-  free(gs);
+  Set *s = h3index_cell_to_cover(cell, coarse_res);
   if (s == NULL)
     return NULL;
   H3Index *cells = h3indexset_values(s, count);
