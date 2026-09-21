@@ -22,14 +22,16 @@
  *   parent + 1 ring  every such parent with its six neighbours, `gridDisk` of
  *                    radius one around it
  *   hexagon cover    the union, over the stored cells, of the exact coarse
- *                    cover of each cell's boundary polygon, `geoToH3IndexSet`
- *                    of `cellToBoundary`; the path lies in the union of its
- *                    stored cells, so each of its points lies in a cell of
- *                    this cover. The polygon is written as WKB from the
- *                    vertices' doubles, since a decimal rounding of the
- *                    vertices changes the cover of some cells. The cover of
- *                    each distinct stored cell is computed once over the run
- *                    and kept, up to a bounded table.
+ *                    cover of each cell, `h3index_cell_to_cover`; the path
+ *                    lies in the union of its stored cells, so each of its
+ *                    points lies in a cell of this cover. That entry walks
+ *                    the cell's edges as the arcs of great circles they are,
+ *                    which is the cell itself: a cell read as a polygon of
+ *                    its vertices is read as a PLANAR one, whose edges are
+ *                    straight lines in longitude and latitude and so describe
+ *                    another figure. The cover of each distinct stored cell
+ *                    is computed once over the run and kept, up to a bounded
+ *                    table.
  *
  * For each path it reports the cells the rebuilt cover holds and the path
  * lacks, counted in cells and in trips, the time to build it, and, per window
@@ -148,9 +150,11 @@ cells_coarsen(const H3Index *in, int nin, int coarse_res, int *count)
 }
 
 /**
- * @brief Return the exact coarse cover of one stored cell's boundary polygon
- * @details The polygon is the cell's `cellToBoundary` vertices in longitude
- * and latitude, and its cover is `geoToH3IndexSet` at the coarse resolution.
+ * @brief Return the exact coarse cover of one stored cell
+ * @details `h3index_cell_to_cover` states it: the walk of the cell's edges,
+ * which are arcs of great circles, at the coarse resolution. That walk is the
+ * whole cover there, since a cell of a resolution no finer than this one is at
+ * least as wide and cannot meet it without holding a point of its boundary.
  * The returned array belongs to the caller.
  */
 static H3Index *
