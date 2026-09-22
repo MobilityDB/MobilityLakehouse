@@ -12,7 +12,8 @@
 #
 # Environment: ROOT (the repository's data/); RUN (the run under ROOT/stage/planar/); RAW
 # (ROOT/raw); DUCKDB_ENGINE, a DuckDB shell whose spatial extension writes the GeoPackages;
-# VESSEL, the MMSI the segmentation figure draws; BOX_FRAME, the frame the segment boxes are cut to
+# VESSEL, the MMSI the segmentation figure draws; CELL_SIZE (50000), 41_part_layouts.sh's own,
+# which the region grid is asked for; BOX_FRAME, the frame the segment boxes are cut to
 # before export, the wide figure's own frame by default; STAGE and STAGE_QGIS, where the layers and
 # the PNGs live, as this shell and as QGIS name them; FIGURES_DEST; QGIS_PYTHON, as
 # layoutfig/render.sh documents it.
@@ -32,11 +33,16 @@ export FIGURES_DEST=${FIGURES_DEST:-$ROOT/results/planar/figures}
 # shows, and a layer QGIS never draws still costs the write and the read.
 read -r BX0 BY0 BX1 BY1 <<< "${BOX_FRAME:-600000 6013000 700000 6088000}"
 
+# The cell the region grid is asked for is the one 41_part_layouts.sh splits on, so the figure's
+# grid and the layouts it draws cannot come apart.
+CELL=${CELL_SIZE:-50000.0}
+
 mkdir -p "$STAGE" "$FIGURES_DEST"
 "$P/duckdb.sh" \
   -cmd "SET VARIABLE out = '$RUN'" -cmd "SET VARIABLE raw = '$RAW'" \
   -cmd "SET VARIABLE stage = '$STAGE'" -cmd "SET VARIABLE windows = '$P/windows_25832.csv'" \
   -cmd "SET VARIABLE day = '$DAY'" -cmd "SET VARIABLE vessel = $VESSEL" \
+  -cmd "SET VARIABLE cell = $CELL" \
   -cmd "SET VARIABLE fx0 = $BX0" -cmd "SET VARIABLE fy0 = $BY0" \
   -cmd "SET VARIABLE fx1 = $BX1" -cmd "SET VARIABLE fy1 = $BY1" \
   -c ".read $L/01_export.sql"
