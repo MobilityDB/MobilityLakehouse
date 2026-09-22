@@ -127,7 +127,21 @@ L1 to L4) and `layout_compact/` (L1s to L4s). The results land in
   queries read through the Iceberg catalog and through DuckLake;
 - `figures/`, the evaluation figures: the share of its bytes each layout reads, the speedup of
   each query and layout over L0, the trade-off of speedup against bytes read, and the files a
-  query reads and the speedup it gains through each catalog.
+  query reads and the speedup it gains through each catalog; and, from the `cover-figures` step,
+  the two cell-cover figures, `h3cover_trip_res8.png` and `h3cover_trip_res9.png`, the cover of one
+  vessel track, and `h3cover_region_res8.png` and `h3cover_region_res9.png`, the cover of one
+  protected area.
+
+The cell-cover figures are drawn by `planar/77_cover_figures.sh` and the scripts of
+`planar/coverfig/`, and they are a step of their own because they read the raw archives rather
+than a run: they show what a cover *is*, the cells a traversal adds over the cells the recorded
+positions fall in, and the cells a region's boundary passes through over the cells it encloses,
+which no layout measurement states. The step computes them in a private PostgreSQL cluster it
+creates and drops, so it cannot disturb a server holding a run, and draws them with QGIS over an
+OpenStreetMap basemap. It therefore needs more than the rest of the benchmark: QGIS, GDAL, and
+`MOBILITYDB_PG_PREFIX`, the staged PostgreSQL prefix of a MobilityDB build carrying H3. The frames
+are `planar/coverfig/07_frames.sql`, which also reports the cells of each class the figure captions
+state, both in frame and over the whole cover.
 
 The windows are the paper's (`planar/windows_25832.csv`, written by `planar/45_windows.sql`): four
 regions crossed with an hour, a day and a week from 2026-01-15 08:00 UTC and the month of January.

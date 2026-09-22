@@ -34,7 +34,11 @@
 # PostGIS and pg_parquet, named by PGHOST, PGPORT, PGDATABASE and PGUSER; `mobilityspark` another,
 # the ten queries answered by MobilitySpark in Apache Spark over L0 and compared with L0's answers
 # (planar/76_mobilityspark.py), which needs a JDK, Maven and MOBILITYSPARK, a MobilitySpark
-# checkout built by its tools/refresh-from-master.sh; PYTHON (python3), the
+# checkout built by its tools/refresh-from-master.sh; `cover-figures` another, the paper's two
+# cell-cover figures, the cover of one vessel track and of one protected area at H3 resolutions 8
+# and 9 (planar/77_cover_figures.sh), which needs QGIS, GDAL and MOBILITYDB_PG_PREFIX, a staged
+# PostgreSQL prefix of a MobilityDB build carrying H3, and reads the raw archives rather than a
+# run, since those figures show what a cover is and not what a layout measures; PYTHON (python3), the
 # interpreter carrying the packages of planar/requirements.txt, which the catalogs step registers
 # the layouts with and the catalog-pruning step reads the Iceberg catalog with; MEOS_PREFIX, the
 # MEOS install built with H3 that the soundness step builds the cell-cover harness against.
@@ -213,6 +217,9 @@ if want mobilityspark; then
 fi
 if want figures; then
   python3 "$B/planar/74_figures.py" "$OUT" "$OUT/figures"
+fi
+if want cover-figures; then
+  FIGURES_DEST="$OUT/figures" "$B/planar/77_cover_figures.sh"
 fi
 if want cold; then
   mkdir -p "$OUT"; rm -f "$OUT/query-runtime-cold.csv"
