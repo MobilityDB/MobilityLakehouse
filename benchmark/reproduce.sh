@@ -34,7 +34,10 @@
 # PostGIS and pg_parquet, named by PGHOST, PGPORT, PGDATABASE and PGUSER; `mobilityspark` another,
 # the ten queries answered by MobilitySpark in Apache Spark over L0 and compared with L0's answers
 # (planar/76_mobilityspark.py), which needs a JDK, Maven and MOBILITYSPARK, a MobilitySpark
-# checkout built by its tools/refresh-from-master.sh; `dataset-figures` another, the raw zone's
+# checkout built by its tools/refresh-from-master.sh; `layout-figures` another, the stored bounds
+# of the regular and the adaptive tiling over the grid they cut on, and one vessel's day before and
+# after segmentation (planar/79_layout_figures.sh), which needs QGIS and GDAL;
+# `dataset-figures` another, the raw zone's
 # traffic density and the in-file orderings of one day (planar/78_dataset_figures.py);
 # `cover-figures` another, the paper's two
 # cell-cover figures, the cover of one vessel track and of one protected area at H3 resolutions 8
@@ -222,6 +225,9 @@ if want figures; then
 fi
 if want dataset-figures; then
   RAW="$ROOT/raw" python3 "$B/planar/78_dataset_figures.py" "" "$OUT/figures"
+fi
+if want layout-figures; then
+  RAW="$ROOT/raw" FIGURES_DEST="$OUT/figures" "$B/planar/79_layout_figures.sh"
 fi
 if want cover-figures; then
   FIGURES_DEST="$OUT/figures" "$B/planar/77_cover_figures.sh"
