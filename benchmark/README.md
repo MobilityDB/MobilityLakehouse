@@ -132,6 +132,14 @@ L1 to L4) and `layout_compact/` (L1s to L4s). The results land in
   vessel track, and `h3cover_region_res8.png` and `h3cover_region_res9.png`, the cover of one
   protected area.
 
+The `dataset-figures` step adds two more to the same directory (`planar/78_dataset_figures.py`):
+`spatial_heatmap.png`, the raw zone's messages per lon/lat bin, which is where the traffic
+concentrates and so where the evaluation regions are drawn from, and `inorder.png`, one panel per
+in-file ordering showing each row group's own bounding box over the segments it holds. The heatmap
+counts inside `HEAT_BBOX`, the feed's area, because the raw zone is the archives as they arrive and
+carries stray reports from every ocean that `20_clean.sql` later removes. The ordering panels name
+the row groups each layout holds, which is the granularity the comparison with $L0$ turns on.
+
 The cell-cover figures are drawn by `planar/77_cover_figures.sh` and the scripts of
 `planar/coverfig/`, and they are a step of their own because they read the raw archives rather
 than a run: they show what a cover *is*, the cells a traversal adds over the cells the recorded
