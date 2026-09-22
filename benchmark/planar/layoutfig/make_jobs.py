@@ -83,10 +83,22 @@ def raw_job(fig, frames):
                                         "outline_style": "no", "size": "0.5"}}])
 
 
+def seg_points(kind, color, size):
+    """A segment of a single position, which is a point rather than a line.
+
+    The marker counterpart of `#segments` beside it, so the figure draws every segment its
+    caption counts rather than only those long enough to be a line.
+    """
+    return {"type": "vector", "path": STAGE + "track_points.gpkg", "layer": "track_points",
+            "filter": f"\"type\" = '{kind}'", "kind": "marker",
+            "style": {"name": "circle", "color": color, "outline_style": "no", "size": size}}
+
+
 def segmented_job(fig, frames):
     """The same vessel after cleaning and segmentation, each segment drawn by its type."""
     return job(fig, frames,
-               [segments("In motion", MOVE, "0.5"), segments("Stationary", STOP, "1.4")],
+               [segments("In motion", MOVE, "0.5"), segments("Stationary", STOP, "1.4"),
+                seg_points("In motion", MOVE, "0.8"), seg_points("Stationary", STOP, "1.4")],
                legend={"origin": [0.02, 0.05], "font_px": 26,
                        "items": [["stop segment", STOP], ["in motion", MOVE]]})
 

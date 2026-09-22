@@ -90,15 +90,31 @@ WHERE mmsi = getvariable('vessel')
   AND trip_tmin < cast(getvariable('day') AS DATE) + INTERVAL 1 DAY
   AND trip_tmax >= cast(getvariable('day') AS DATE);
 
-COPY (
-  SELECT s.seg, s.segment_type AS type,
-    ST_MakeLine(list(ST_Point(c.lon, c.lat) ORDER BY c.t)) AS geom
-  FROM Seg s JOIN read_parquet(getvariable('out') || '/clean/*.parquet') c
-    ON c.mmsi = getvariable('vessel') AND c.t BETWEEN s.trip_tmin AND s.trip_tmax
-  GROUP BY s.seg, s.segment_type
-  HAVING count(*) >= 2
-) TO (getvariable('stage') || '/track_segments.gpkg')
+-- The positions of each segment in time order, kept as a list so the geometry each segment needs
+-- is built from it: a line where there are two or more, the position itself where there is one.
+CREATE OR REPLACE TABLE SegPos AS
+SELECT s.seg, s.segment_type AS type, count(*) AS n,
+  list(ST_Point(c.lon, c.lat) ORDER BY c.t) AS pts
+FROM Seg s JOIN read_parquet(getvariable('out') || '/clean/*.parquet') c
+  ON c.mmsi = getvariable('vessel') AND c.t BETWEEN s.trip_tmin AND s.trip_tmax
+GROUP BY s.seg, s.segment_type;
+
+-- A segment of two positions or more is a line; one of a single position is a point, and it is
+-- drawn as one rather than dropped. A caption states the segments the segmentation found, so a
+-- figure that draws only the lines shows fewer shapes than its own caption counts.
+COPY (SELECT seg, type, ST_MakeLine(pts) AS geom FROM SegPos WHERE n >= 2)
+TO (getvariable('stage') || '/track_segments.gpkg')
 WITH (FORMAT GDAL, DRIVER 'GPKG', SRS 'EPSG:4326', LAYER_CREATION_OPTIONS 'GEOMETRY_NAME=geom');
+
+COPY (SELECT seg, type, pts[1] AS geom FROM SegPos WHERE n = 1)
+TO (getvariable('stage') || '/track_points.gpkg')
+WITH (FORMAT GDAL, DRIVER 'GPKG', SRS 'EPSG:4326', LAYER_CREATION_OPTIONS 'GEOMETRY_NAME=geom');
+
+-- Every segment carries at least one position and is drawn exactly once, as a line or as a point
+SELECT CASE WHEN (SELECT count(*) FROM SegPos) <> (SELECT count(*) FROM Seg)
+  THEN error('a segment of the day carries no cleaned position')
+  ELSE 'drawn: ' || (SELECT count(*) FROM SegPos WHERE n >= 2) || ' lines, ' ||
+       (SELECT count(*) FROM SegPos WHERE n = 1) || ' points' END AS segments_drawn;
 
 -- The frame of each render, in the rendering CRS, each with a 4:3 aspect. The tiling frames are
 -- the study's own area and the strait the queries name; the track frames are the vessel's extent
