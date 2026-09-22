@@ -37,8 +37,6 @@
 # checkout built by its tools/refresh-from-master.sh; `layout-figures` another, the stored bounds
 # of the regular and the adaptive tiling over the grid they cut on, and one vessel's day before and
 # after segmentation (planar/79_layout_figures.sh), which needs QGIS and GDAL;
-# `dataset-figures` another, the raw zone's
-# traffic density and the in-file orderings of one day (planar/78_dataset_figures.py);
 # `cover-figures` another, the paper's two
 # cell-cover figures, the cover of one vessel track and of one protected area at H3 resolutions 8
 # and 9 (planar/77_cover_figures.sh), which needs QGIS, GDAL and MOBILITYDB_PG_PREFIX, a staged
@@ -53,7 +51,7 @@ B="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 FROM=${1:-2026-01-01}
 TO=${2:-2026-01-31}
 export ROOT=${ROOT:-$(cd "$B/.." && pwd)/data}
-STEPS=${STEPS:-"ingest clean layouts check sensitivity segments answers pruning storage catalogs catalog-pruning soundness queries timing catalog-timing figures"}
+STEPS=${STEPS:-"ingest clean layouts check sensitivity segments answers pruning storage catalogs catalog-pruning soundness queries timing catalog-timing figures dataset-figures"}
 LAYOUTS="L0 L0X L0Z L0H L1 L2 L3 L4 L1s L2s L3s L4s"
 
 want() { case " $STEPS " in *" $1 "*) return 0;; *) return 1;; esac; }
@@ -231,6 +229,9 @@ if want layout-figures; then
 fi
 if want cover-figures; then
   FIGURES_DEST="$OUT/figures" "$B/planar/77_cover_figures.sh"
+fi
+if want figures || want dataset-figures || want layout-figures || want cover-figures; then
+  "$B/planar/93_check_figures.sh" "$OUT/figures"
 fi
 if want cold; then
   mkdir -p "$OUT"; rm -f "$OUT/query-runtime-cold.csv"

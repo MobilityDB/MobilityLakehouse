@@ -2,7 +2,7 @@
 """Draw the dataset and in-file-ordering figures of the paper from a run.
 
 PNG files in the output directory, beside the evaluation figures 74_figures.py writes:
-  spatial_heatmap.png  the AIS messages of the raw zone binned on a lon/lat grid and coloured by
+  ds_spatial_heatmap.png  the AIS messages of the raw zone binned on a lon/lat grid and coloured by
                        their count, which is where the traffic concentrates and so where the
                        evaluation regions are drawn from;
   inorder.png          one panel per in-file ordering, the segments of one day as their bounding
@@ -164,7 +164,7 @@ def main():
     outdir = sys.argv[2] if len(sys.argv) > 2 else os.path.join(root, 'results', 'planar', 'figures')
     os.makedirs(outdir, exist_ok=True)
     bbox = [float(v) for v in os.environ.get('HEAT_BBOX', '3,53,18,60').split(',')]
-    heatmap(raw, os.path.join(outdir, 'spatial_heatmap.png'),
+    heatmap(raw, os.path.join(outdir, 'ds_spatial_heatmap.png'),
             float(os.environ.get('BIN', '0.01')), bbox)
     inorder(run, day, os.path.join(outdir, 'inorder.png'))
 
