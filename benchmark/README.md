@@ -140,6 +140,17 @@ counts inside `HEAT_BBOX`, the feed's area, because the raw zone is the archives
 carries stray reports from every ocean that `20_clean.sql` later removes. The ordering panels name
 the row groups each layout holds, which is the granularity the comparison with $L0$ turns on.
 
+The `layout-figures` step adds the tiling and segmentation figures (`planar/79_layout_figures.sh`
+and `planar/layoutfig/`): `L2_tiling_wide.png` and `L3_tiling_wide.png` with their `_zoom`
+counterparts, the stored bounds of the regular and the adaptive tiling over the 50 km grid they cut
+on and the query region over both, and `segment_raw.png` and `clean_segmented.png`, one vessel's
+day as the feed reports it and as cleaning and segmentation leave it. Its layers come out of the
+run with DuckDB alone, since a segment's stored bounds and its tile are plain columns and a
+segment's trajectory is exactly the cleaned positions of its vessel inside its own time span, so
+the step needs no MEOS and no PostgreSQL; QGIS draws them with `coverfig/render_map.py`. The export
+also reports the counts the segmentation figure's caption states, read off the run rather than
+carried.
+
 The cell-cover figures are drawn by `planar/77_cover_figures.sh` and the scripts of
 `planar/coverfig/`, and they are a step of their own because they read the raw archives rather
 than a run: they show what a cover *is*, the cells a traversal adds over the cells the recorded
