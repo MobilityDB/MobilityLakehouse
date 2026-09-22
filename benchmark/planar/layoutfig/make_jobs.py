@@ -36,9 +36,14 @@ def boxes(layout, fine):
 
 
 def tiles():
-    """The grid the spatial layouts cut on, dashed so it reads as a rule and not as data."""
-    return {"type": "vector", "path": STAGE + "tiles.gpkg", "layer": "tiles", "kind": "line",
-            "style": {"line_color": "#111111", "line_width": "0.5", "line_style": "dash"}}
+    """The region cells `spaceTiles` answers, outlined and dashed so they read as a rule, not data.
+
+    An unfilled outline, after `#region` and `#boxes` beside it, since a cell is a rectangle like
+    they are; the dash is what separates the rule from the data drawn inside it.
+    """
+    return {"type": "vector", "path": STAGE + "tiles.gpkg", "layer": "tiles", "kind": "fill",
+            "style": {"style": "no", "outline_color": "#111111", "outline_width": "0.5",
+                      "outline_style": "dash"}}
 
 
 def region(name):

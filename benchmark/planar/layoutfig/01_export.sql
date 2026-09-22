@@ -37,22 +37,29 @@ COPY (
 ) TO (getvariable('stage') || '/boxes.gpkg')
 WITH (FORMAT GDAL, DRIVER 'GPKG', SRS 'EPSG:25832', LAYER_CREATION_OPTIONS 'GEOMETRY_NAME=geom');
 
--- The grid the spatial layouts cut on: cell_x and cell_y index a 50 km cell on a zero origin, so
--- the boundaries are the multiples of the cell inside the frame. They are drawn rather than
--- derived from the boxes, because a boundary no segment reaches is still a boundary.
-COPY (
-  WITH X AS (SELECT v * 50000.0 AS c FROM range(
-        cast(floor(getvariable('fx0') / 50000.0) AS BIGINT),
-        cast(ceil(getvariable('fx1') / 50000.0) AS BIGINT) + 1) t(v)),
-  Y AS (SELECT v * 50000.0 AS c FROM range(
-        cast(floor(getvariable('fy0') / 50000.0) AS BIGINT),
-        cast(ceil(getvariable('fy1') / 50000.0) AS BIGINT) + 1) t(v))
-  SELECT ST_GeomFromText('LINESTRING(' || c || ' ' || getvariable('fy0') || ',' ||
-                         c || ' ' || getvariable('fy1') || ')') AS geom FROM X
-  UNION ALL
-  SELECT ST_GeomFromText('LINESTRING(' || getvariable('fx0') || ' ' || c || ',' ||
-                         getvariable('fx1') || ' ' || c || ')') FROM Y
-) TO (getvariable('stage') || '/tiles.gpkg')
+-- The region cells the spatial layouts partition by, asked of the tiler itself: `spaceTiles` is
+-- what answers the tiles of an area, and it carries the origin and the border rule that decide
+-- where a boundary falls. Deriving the boundaries as multiples of the cell instead would restate
+-- the tiler's arithmetic and hold only while 41_part_layouts.sh leaves `sorigin` at its default,
+-- with nothing to report the day it does not.
+--
+-- The cell is CELL_SIZE, the size that script splits on, and the frame is the area the figures
+-- cover, so the layer holds the cells a figure can show and no others.
+CREATE OR REPLACE TABLE Tiles AS
+SELECT Xmin(tile) AS x0, Ymin(tile) AS y0, Xmax(tile) AS x1, Ymax(tile) AS y1
+FROM spaceTiles(
+  stbox('SRID=25832;STBOX X((' || getvariable('fx0') || ',' || getvariable('fy0') || '),(' ||
+        getvariable('fx1') || ',' || getvariable('fy1') || '))'),
+  getvariable('cell'), getvariable('cell'));
+
+-- A frame always meets at least one cell, so an empty layer means the tiler answered nothing and
+-- the figure would be drawn without the grid it is about.
+SELECT CASE WHEN count(*) = 0
+  THEN error('spaceTiles answered no cell for the frame; the grid layer would be empty')
+  ELSE 'tiles: ' || count(*) END AS tiles FROM Tiles;
+
+COPY (SELECT box(x0, y0, x1, y1) AS geom FROM Tiles)
+TO (getvariable('stage') || '/tiles.gpkg')
 WITH (FORMAT GDAL, DRIVER 'GPKG', SRS 'EPSG:25832', LAYER_CREATION_OPTIONS 'GEOMETRY_NAME=geom');
 
 -- The query regions the tiles are compared against: a tile prunes only while it is smaller than
