@@ -133,12 +133,39 @@ L1 to L4) and `layout_compact/` (L1s to L4s). The results land in
   protected area.
 
 The `dataset-figures` step adds two more to the same directory (`planar/78_dataset_figures.py`):
-`spatial_heatmap.png`, the raw zone's messages per lon/lat bin, which is where the traffic
+`ds_spatial_heatmap.png`, the raw zone's messages per lon/lat bin, which is where the traffic
 concentrates and so where the evaluation regions are drawn from, and `inorder.png`, one panel per
 in-file ordering showing each row group's own bounding box over the segments it holds. The heatmap
 counts inside `HEAT_BBOX`, the feed's area, because the raw zone is the archives as they arrive and
 carries stray reports from every ocean that `20_clean.sql` later removes. The ordering panels name
 the row groups each layout holds, which is the granularity the comparison with $L0$ turns on.
+
+Every figure of the paper is drawn by one of four steps, and `planar/93_check_figures.sh` holds
+that list and fails where a step that ran left one of its figures undrawn:
+
+| figure | step |
+|---|---|
+| `eval_month_pruning_bytes.png`, `eval_month_speedup_heatmap.png`, `eval_month_tradeoff.png` | `figures` |
+| `eval_month_lakehouse.png` | `figures`, where the catalog steps have run |
+| `ds_spatial_heatmap.png`, `inorder.png` | `dataset-figures` |
+| `L2_tiling_wide.png`, `L2_tiling_zoom.png`, `L3_tiling_wide.png`, `L3_tiling_zoom.png`, `segment_raw.png`, `clean_segmented.png` | `layout-figures` |
+| `h3cover_trip_res8.png`, `h3cover_trip_res9.png`, `h3cover_region_res8.png`, `h3cover_region_res9.png` | `cover-figures` |
+
+`figures` and `dataset-figures` run in the default set and need nothing beyond the benchmark's own
+prerequisites. The other two need QGIS and GDAL, and `cover-figures` a staged PostgreSQL prefix of
+a MobilityDB build carrying H3, so they are named explicitly:
+
+```
+STEPS="layout-figures cover-figures" MOBILITYDB_PG_PREFIX=<prefix> benchmark/reproduce.sh
+```
+
+Against a QGIS on the Windows host from WSL, name its interpreter and stage where both sides read:
+
+```
+QGIS_PYTHON='cmd.exe /c "C:\Program Files\QGIS 3.40.15\bin\python-qgis-ltr.bat"' \
+STAGE=/mnt/c/Windows/Temp/figs STAGE_QGIS='C:\Windows\Temp\figs' \
+STEPS="layout-figures" benchmark/reproduce.sh
+```
 
 The `layout-figures` step adds the tiling and segmentation figures (`planar/79_layout_figures.sh`
 and `planar/layoutfig/`): `L2_tiling_wide.png` and `L3_tiling_wide.png` with their `_zoom`

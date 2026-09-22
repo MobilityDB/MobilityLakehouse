@@ -2,15 +2,15 @@
 """Draw the evaluation figures of the paper from the results of a run.
 
 PNG files in the output directory, from the tables reproduce.sh writes in the results directory:
-  pruning_bytes.png    per layout, the share of its bytes a query reads in each window, the mean
+  eval_month_pruning_bytes.png    per layout, the share of its bytes a query reads in each window, the mean
                        over the four regions (layout-pruning.csv);
-  speedup_heatmap.png  per query and layout, the speedup over L0, the geometric mean over the four
+  eval_month_speedup_heatmap.png  per query and layout, the speedup over L0, the geometric mean over the four
                        windows of L0's trimmed mean over the layout's (query-runtime-summary.csv,
                        files read directly, flat bounds);
-  tradeoff.png         per layout, the geometric-mean speedup over every query and window against
+  eval_month_tradeoff.png         per layout, the geometric-mean speedup over every query and window against
                        the mean share of its bytes read over the sixteen region-window pairs, each
                        point sized by the rows the layout stores per row of L0 (storage.csv);
-  lakehouse.png        per layout, the files a query's scan reads through the Iceberg catalog
+  eval_month_lakehouse.png        per layout, the files a query's scan reads through the Iceberg catalog
                        against those it reads over the plain files, the mean over the region-window
                        pairs (catalog-pruning.csv), and the speedup of the queries through Iceberg
                        and through DuckLake over the same queries on the plain files, the geometric
@@ -231,9 +231,9 @@ def main():
     share = bytes_read(os.path.join(res, 'layout-pruning.csv'))
     sp = speedups(summary)
     repl = replication(os.path.join(res, 'storage.csv'))
-    pruning_figure(share, os.path.join(outdir, 'pruning_bytes.png'))
-    heatmap_figure(sp, os.path.join(outdir, 'speedup_heatmap.png'))
-    tradeoff_figure(share, sp, repl, os.path.join(outdir, 'tradeoff.png'))
+    pruning_figure(share, os.path.join(outdir, 'eval_month_pruning_bytes.png'))
+    heatmap_figure(sp, os.path.join(outdir, 'eval_month_speedup_heatmap.png'))
+    tradeoff_figure(share, sp, repl, os.path.join(outdir, 'eval_month_tradeoff.png'))
     for lay in LAYOUTS:
         if (lay, '1h') in share:
             print(lay, ' '.join(f'{share[(lay, w)]:.3f}' for w in WINDOWS),
@@ -246,7 +246,7 @@ def main():
         files, total = catalog_files(cat['pruning'])
         catalogs = {n: runtimes(cat[n], n) for n in ('iceberg', 'ducklake')}
         gain = lakehouse_figure(files, total, runtimes(summary, 'lake'), catalogs,
-                                os.path.join(outdir, 'lakehouse.png'))
+                                os.path.join(outdir, 'eval_month_lakehouse.png'))
         for lay in LAYOUTS:
             if lay in total:
                 print(f'{lay} files lake {files.get(("lake", lay), total[lay]):.1f} '

@@ -38,6 +38,17 @@ read -r BX0 BY0 BX1 BY1 <<< "${BOX_FRAME:-600000 6013000 700000 6088000}"
 CELL=${CELL_SIZE:-50000.0}
 
 mkdir -p "$STAGE" "$FIGURES_DEST"
+
+# The export asks the tiler for the region cells, so the engine has to carry MobilityDuck. A plain
+# DuckDB reaches the call and answers `Table Function with name spacetiles does not exist! Did you
+# mean "shapefile_meta"?`, which names neither the extension nor the variable that selects it.
+if ! "$P/duckdb.sh" -c "SELECT count(*) FROM spaceTiles(
+       stbox('SRID=25832;STBOX X((0,0),(100000,100000))'), 50000.0, 50000.0)" > /dev/null 2>&1; then
+  echo "79_layout_figures.sh: the DuckDB this runs answers no spaceTiles, so it carries no" \
+       "MobilityDuck; name one in DUCKDB_ENGINE or in planar/engine.path" >&2
+  exit 1
+fi
+
 "$P/duckdb.sh" \
   -cmd "SET VARIABLE out = '$RUN'" -cmd "SET VARIABLE raw = '$RAW'" \
   -cmd "SET VARIABLE stage = '$STAGE'" -cmd "SET VARIABLE windows = '$P/windows_25832.csv'" \
