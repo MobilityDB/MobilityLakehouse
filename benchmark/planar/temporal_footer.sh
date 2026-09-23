@@ -8,10 +8,9 @@
 # tgeompoint sequence in extended WKB, so a consumer reads the encoding, the base type, the
 # interpolation and the frame from the footer without decoding a row.
 #
-# The CRS travels twice by that spec's own rule: `srid` names it and `crs` restates it as inline
-# PROJJSON, the form GeoParquet's column metadata uses, so a reader resolves it against no
-# registry. `crs` is optional, and a machine whose PROJ cannot state the PROJJSON emits the
-# document without it rather than a `null` that would claim the frame is unknown when it is not.
+# `srid` names the CRS and is always written. `crs`, the same CRS again as inline PROJJSON, is
+# written only under CRS_INLINE, for an SRID no registry resolves; a `null` is never written, since
+# that states the frame is unknown when `srid` names it.
 #
 # Every writer of the zone calls this, so the nine COPY statements carry one document and cannot
 # drift from one another.
@@ -19,8 +18,13 @@ set -euo pipefail
 
 SRID=${1:-${SRID:-25832}}
 
+# `crs` is written where it states what `srid` cannot. The specification defines its absence --
+# "when `crs` is absent, the CRS is the one `srid` names" -- so a registered code needs no inline
+# copy of its own definition, and a run writes one per file: 3,191 bytes against 252 for the rest
+# of the document, 35 MB over a corpus of ten thousand files, all of it the same text. An SRID a
+# registry does not resolve is the case the inline form exists for, and CRS_INLINE asks for it.
 crs=""
-if command -v projinfo > /dev/null; then
+if [ "${CRS_INLINE:-0}" = 1 ] && command -v projinfo > /dev/null; then
   # projinfo prints a `PROJJSON:` banner before the document
   j=$(projinfo "EPSG:$SRID" -o PROJJSON -q 2>/dev/null | sed '1{/^PROJJSON:/d}' || true)
   # a JSON object and nothing else; a single quote would end the SQL string that carries it
