@@ -140,6 +140,14 @@ counts inside `HEAT_BBOX`, the feed's area, because the raw zone is the archives
 carries stray reports from every ocean that `20_clean.sql` later removes. The ordering panels name
 the row groups each layout holds, which is the granularity the comparison with $L0$ turns on.
 
+Every file of the query-ready zone carries a TemporalParquet footer, the `temporal` key
+`spec/temporalparquet.md` states, describing the `trip` column: its encoding, its base type, its
+interpolation, its SRID and the same CRS again as inline PROJJSON, so a consumer reads what the
+blob is without decoding a row and without resolving an identifier against a registry. One
+document serves every writer (`planar/temporal_footer.sh`), and the `check` step reads it back off
+L0 and every layout (`planar/94_check_footer.sh`): the footer changes no answer and no timing, so
+nothing else in the pipeline would notice its absence.
+
 Every figure of the paper is drawn by one of four steps, and `planar/93_check_figures.sh` holds
 that list and fails where a step that ran left one of its figures undrawn:
 

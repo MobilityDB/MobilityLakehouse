@@ -112,6 +112,7 @@ if want layouts; then
 fi
 if want check; then
   "$B/planar/92_check_layouts.sh"
+  "$B/planar/94_check_footer.sh" "$RUN"
 fi
 if want sensitivity; then
   mkdir -p "$OUT"
