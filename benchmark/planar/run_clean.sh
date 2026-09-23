@@ -17,6 +17,8 @@
 set -euo pipefail
 
 P="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# The query-ready zone carries a TemporalParquet footer, one document for every writer
+TEMPORAL_FOOTER=$("$P/temporal_footer.sh")
 ROOT=${ROOT:-$(cd "$P/../.." && pwd)/data}
 LO=${LO:?LO is required}
 HI=${HI:?HI is required}
@@ -103,7 +105,8 @@ if want 3; then
       echo "SET VARIABLE out = '$OUT';"
       echo "SET VARIABLE day = '$day';"
       echo ".read $P/30_l0.sql"
-      printf "COPY l0 TO '%s' (FORMAT parquet, COMPRESSION zstd);\n" "$dest/day-$day.parquet"
+      printf "COPY l0 TO '%s' (FORMAT parquet, COMPRESSION zstd, %s);\n" \
+        "$dest/day-$day.parquet" "$TEMPORAL_FOOTER"
     } > "$OUT/gen/l0-$day.sql"
     t0=$(date +%s)
     "$DUCKDB" -unsigned -c ".read $OUT/gen/l0-$day.sql" > "$OUT/gen/l0-$day.log" 2>&1

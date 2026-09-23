@@ -25,6 +25,8 @@ RUN=${RUN:?RUN is required}
 # duckdb.sh, which starts it with the arrow lambda syntax disabled.
 export DUCKDB_ENGINE=${DUCKDB_ENGINE:-${DUCKDB:-}}
 DUCKDB="$(dirname "${BASH_SOURCE[0]}")/duckdb.sh"
+# The query-ready zone carries a TemporalParquet footer, one document for every writer
+TEMPORAL_FOOTER=$("$(dirname "${BASH_SOURCE[0]}")/temporal_footer.sh")
 MEM=${LAYOUT_MEMORY:-12GB}
 THREADS=${LAYOUT_THREADS:-4}
 GRID="$RUN/grid.txt"
@@ -79,7 +81,7 @@ for L in ${@:-L1 L2 L3 L4}; do
       mkdir -p "$dest/$path"
       echo "COPY (SELECT * EXCLUDE ($k) FROM read_parquet('$daily', hive_partitioning = true)"
       echo "      WHERE $filter ORDER BY $CX, $CY, trip_tmin)"
-      echo "  TO '$dest/$path/data_0.parquet' (FORMAT parquet, ROW_GROUP_SIZE 2048, COMPRESSION zstd);"
+      echo "  TO '$dest/$path/data_0.parquet' (FORMAT parquet, ROW_GROUP_SIZE 2048, COMPRESSION zstd, $TEMPORAL_FOOTER);"
     done <<< "$parts"
   } > "$script"
   t0=$(date +%s)

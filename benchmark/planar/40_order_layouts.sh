@@ -18,6 +18,8 @@
 set -euo pipefail
 
 P="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# The query-ready zone carries a TemporalParquet footer, one document for every writer
+TEMPORAL_FOOTER=$("$P/temporal_footer.sh")
 ROOT=${ROOT:-$(cd "$P/../.." && pwd)/data}
 RUN=${RUN:?RUN is required}
 L0="$RUN/L0"
@@ -70,12 +72,12 @@ build_one() {
     # Each layout's COPY is timed on its own in the day's log, the build cost tab:eval-tradeoff reads
     echo ".timer on"
     echo "CREATE OR REPLACE TEMP TABLE src AS SELECT * FROM read_parquet('$src', hive_partitioning = false);"
-    printf "COPY (SELECT * FROM src ORDER BY %s, %s, trip_tspan.tmin) TO '%s/L0X/day-%s.parquet' (FORMAT parquet, ROW_GROUP_SIZE 2048, COMPRESSION zstd);\n" \
-      "$CX" "$CY" "$OUT" "$day"
-    printf "COPY (SELECT * FROM src ORDER BY morton(%s, %s), trip_tspan.tmin) TO '%s/L0Z/day-%s.parquet' (FORMAT parquet, ROW_GROUP_SIZE 2048, COMPRESSION zstd);\n" \
-      "$CX" "$CY" "$OUT" "$day"
-    printf "COPY (SELECT * FROM src ORDER BY ST_Hilbert(%s, %s, %s), trip_tspan.tmin) TO '%s/L0H/day-%s.parquet' (FORMAT parquet, ROW_GROUP_SIZE 2048, COMPRESSION zstd);\n" \
-      "$HX" "$HY" "$BOX" "$OUT" "$day"
+    printf "COPY (SELECT * FROM src ORDER BY %s, %s, trip_tspan.tmin) TO '%s/L0X/day-%s.parquet' (FORMAT parquet, ROW_GROUP_SIZE 2048, COMPRESSION zstd, %s);\n" \
+      "$CX" "$CY" "$OUT" "$day" "$TEMPORAL_FOOTER"
+    printf "COPY (SELECT * FROM src ORDER BY morton(%s, %s), trip_tspan.tmin) TO '%s/L0Z/day-%s.parquet' (FORMAT parquet, ROW_GROUP_SIZE 2048, COMPRESSION zstd, %s);\n" \
+      "$CX" "$CY" "$OUT" "$day" "$TEMPORAL_FOOTER"
+    printf "COPY (SELECT * FROM src ORDER BY ST_Hilbert(%s, %s, %s), trip_tspan.tmin) TO '%s/L0H/day-%s.parquet' (FORMAT parquet, ROW_GROUP_SIZE 2048, COMPRESSION zstd, %s);\n" \
+      "$HX" "$HY" "$BOX" "$OUT" "$day" "$TEMPORAL_FOOTER"
   } > "$script"
   local t0
   t0=$(date +%s)

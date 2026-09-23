@@ -37,6 +37,8 @@ OUT="$RUN/layouts_daily"
 # duckdb.sh, which starts it with the arrow lambda syntax disabled.
 export DUCKDB_ENGINE=${DUCKDB_ENGINE:-${DUCKDB:-}}
 DUCKDB="$(dirname "${BASH_SOURCE[0]}")/duckdb.sh"
+# The query-ready zone carries a TemporalParquet footer, one document for every writer
+TEMPORAL_FOOTER=$("$(dirname "${BASH_SOURCE[0]}")/temporal_footer.sh")
 SPAN_COUNT=${SPAN_COUNT:-}
 if [ -n "$SPAN_COUNT" ]; then LAYERS=${LAYERS:-"L2 L3 L4"}; else LAYERS=${LAYERS:-"L1 L2 L3 L4"}; fi
 MEM=${LAYOUT_MEMORY:-12GB}
@@ -127,7 +129,7 @@ HDR
       marker L1
       build_only <<HDR
 COPY (SELECT *, (hash(MMSI) % 16)::INTEGER AS shard FROM src)
-  TO '$OUT/L1/day-$day' (FORMAT parquet, PARTITION_BY (shard), COMPRESSION zstd, OVERWRITE_OR_IGNORE);
+  TO '$OUT/L1/day-$day' (FORMAT parquet, PARTITION_BY (shard), COMPRESSION zstd, OVERWRITE_OR_IGNORE, $TEMPORAL_FOOTER);
 HDR
     fi
     echo "DROP TABLE src;"
@@ -150,7 +152,7 @@ COPY (
   WHERE $KEEP
   UNION ALL
   SELECT $SCOLS, $CELLX, $CELLY FROM stationary)
-  TO '$OUT/L2/day-$day' (FORMAT parquet, PARTITION_BY (cell_x, cell_y), COMPRESSION zstd, OVERWRITE_OR_IGNORE);
+  TO '$OUT/L2/day-$day' (FORMAT parquet, PARTITION_BY (cell_x, cell_y), COMPRESSION zstd, OVERWRITE_OR_IGNORE, $TEMPORAL_FOOTER);
 HDR
       echo "DROP TABLE l2;"
     fi
@@ -176,7 +178,7 @@ COPY (
   FROM l3 WHERE $KEEP
   UNION ALL
   SELECT $SCOLS, $CELLX, $CELLY FROM stationary)
-  TO '$OUT/L3/day-$day' (FORMAT parquet, PARTITION_BY (cell_x, cell_y), COMPRESSION zstd, OVERWRITE_OR_IGNORE);
+  TO '$OUT/L3/day-$day' (FORMAT parquet, PARTITION_BY (cell_x, cell_y), COMPRESSION zstd, OVERWRITE_OR_IGNORE, $TEMPORAL_FOOTER);
 HDR
       echo "DROP TABLE l3;"
     fi
@@ -197,7 +199,7 @@ COPY (
   WHERE $KEEP
   UNION ALL
   SELECT $SCOLS, (floor(epoch(trip_tspan.tmin) / $BINSEC))::BIGINT FROM stationary)
-  TO '$OUT/L4/day-$day' (FORMAT parquet, PARTITION_BY (time_bin), COMPRESSION zstd, OVERWRITE_OR_IGNORE);
+  TO '$OUT/L4/day-$day' (FORMAT parquet, PARTITION_BY (time_bin), COMPRESSION zstd, OVERWRITE_OR_IGNORE, $TEMPORAL_FOOTER);
 HDR
       echo "DROP TABLE l4;"
     fi
