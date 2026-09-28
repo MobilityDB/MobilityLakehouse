@@ -5,10 +5,12 @@ PNG files in the output directory, beside the evaluation figures 74_figures.py w
   ds_spatial_heatmap.png  the AIS messages of the raw zone binned on a lon/lat grid and coloured by
                        their count, which is where the traffic concentrates and so where the
                        evaluation regions are drawn from;
-  inorder.png          one panel per in-file ordering, the segments of one day as their bounding
-                       boxes' centroids, coloured by the row group holding them, with each row
-                       group's own bounding box drawn over them: a tighter box is a box a query
-                       can skip on.
+  inorder_L0.png       one file per in-file ordering (L0, L0X, L0Z, L0H), the segments of one
+  inorder_L0X.png      day as their bounding boxes' centroids, coloured by the row group holding
+  inorder_L0Z.png      them, with each row group's own bounding box drawn over them: a tighter box
+  inorder_L0H.png      is a box a query can skip on. All four share one pair of limits, and none
+                       carries a title -- the paper sets them as subfigures and letters them, and
+                       each file's row-group count is printed when it is written.
 
   ./78_dataset_figures.py [DAY [OUTDIR]]
 
@@ -120,15 +122,33 @@ def segments(path):
     return [(float(r[1]), float(r[2])) for r in rows]
 
 
-def inorder(run, day, out):
-    """One panel per ordering, the segments coloured by row group under each group's own box."""
-    fig, axes = plt.subplots(2, 2, figsize=(12, 9))
-    for ax, (layout, title) in zip(axes.flat, ORDERINGS):
+def inorder(run, day, outdir):
+    """One FILE per ordering, the segments coloured by row group under each group's own box.
+
+    One file per ordering rather than one grid of four, because the paper sets them as LaTeX
+    subfigures: the letter and the caption are then the document's, so they follow the numbering
+    and the font of every other figure, and no text is baked into the image where a reader cannot
+    select it and a reviewer cannot tell it from data. The panels carry no title for the same
+    reason, and the row-group count each one holds is printed here so the caption can state it.
+
+    Every panel is drawn on ONE pair of limits, taken over all four orderings. Four separate
+    figures otherwise autoscale separately, and a reader comparing box sizes across them would be
+    comparing four different scales -- the one thing a grid of four gave for free.
+    """
+    drawn = {}
+    for layout, title in ORDERINGS:
         path = layout_file(run, layout, day)
         if not os.path.exists(path):
             sys.exit(f'78_dataset_figures.py: no {path}')
-        pts = segments(path)
-        spans = row_groups(path)
+        drawn[layout] = (segments(path), row_groups(path), title)
+
+    every = [p for pts, _, _ in drawn.values() for p in pts]
+    xlim = (min(p[0] for p in every), max(p[0] for p in every))
+    ylim = (min(p[1] for p in every), max(p[1] for p in every))
+    pad = 0.02 * max(xlim[1] - xlim[0], ylim[1] - ylim[0])
+
+    for layout, (pts, spans, title) in drawn.items():
+        fig, ax = plt.subplots(figsize=(6, 4.5))
         for g, (lo, hi) in enumerate(spans):
             part = pts[lo:hi]
             if not part:
@@ -140,17 +160,19 @@ def inorder(run, day, out):
             ys = [p[1] for p in part]
             ax.add_patch(Rectangle((min(xs), min(ys)), max(xs) - min(xs), max(ys) - min(ys),
                                    fill=False, edgecolor=color, linewidth=1.4))
-        ax.set_title(f'{title}  ({len(spans)} row group{"" if len(spans) == 1 else "s"})',
-                     color=INK)
+        ax.set_xlim(xlim[0] - pad, xlim[1] + pad)
+        ax.set_ylim(ylim[0] - pad, ylim[1] + pad)
         ax.set_xticks([])
         ax.set_yticks([])
         ax.set_aspect('equal')
-        for s in ax.spines.values():
-            s.set_color(GRID)
-    fig.tight_layout()
-    fig.savefig(out, dpi=200, facecolor='white')
-    plt.close(fig)
-    print(f'wrote {out}  (day {day})')
+        for sp in ax.spines.values():
+            sp.set_color(GRID)
+        out = os.path.join(outdir, f'inorder_{layout}.png')
+        fig.tight_layout()
+        fig.savefig(out, dpi=200, facecolor='white')
+        plt.close(fig)
+        print(f'wrote {out}  (day {day}, {title}, {len(spans)} row '
+              f'group{"" if len(spans) == 1 else "s"})')
 
 
 def main():
@@ -166,7 +188,7 @@ def main():
     bbox = [float(v) for v in os.environ.get('HEAT_BBOX', '3,53,18,60').split(',')]
     heatmap(raw, os.path.join(outdir, 'ds_spatial_heatmap.png'),
             float(os.environ.get('BIN', '0.01')), bbox)
-    inorder(run, day, os.path.join(outdir, 'inorder.png'))
+    inorder(run, day, outdir)
 
 
 if __name__ == '__main__':

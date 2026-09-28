@@ -32,7 +32,10 @@ eval_month_speedup_heatmap.png    figures
 eval_month_tradeoff.png           figures
 eval_month_lakehouse.png          figures           catalog-pruning.csv
 ds_spatial_heatmap.png            dataset-figures
-inorder.png                       dataset-figures
+inorder_L0.png                    dataset-figures
+inorder_L0X.png                   dataset-figures
+inorder_L0Z.png                   dataset-figures
+inorder_L0H.png                   dataset-figures
 L2_tiling_wide.png                layout-figures
 L2_tiling_zoom.png                layout-figures
 L3_tiling_wide.png                layout-figures
