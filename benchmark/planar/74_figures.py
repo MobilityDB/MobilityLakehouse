@@ -33,6 +33,26 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
 LAYOUTS = ['L0', 'L0X', 'L0Z', 'L0H', 'L1', 'L2', 'L3', 'L4', 'L1s', 'L2s', 'L3s', 'L4s']
+
+# THE PAGE THE FIGURES ARE PRINTED ON, so each can be DRAWN at the size it is SHOWN. A figure
+# drawn wider than its printed width is scaled down by `\includegraphics`, and its text with it:
+# at the sizes these were drawn before, a 9 pt label reached the reader at 4.4 to 6.6 pt beside a
+# 9 pt caption. `\the\textwidth` under acmart's acmlarge reads 452.295 pt, and a caption there is
+# `small`, which acmlarge resolves to 9 pt. TeX's point is 1/72.27 in where matplotlib's is 1/72,
+# which is the 72/72.27. Each figure below passes the fraction the paper's own
+# `\includegraphics` sets it at, so the two stay one statement rather than two.
+TEXTWIDTH_IN = 452.295 / 72.27
+# THE CAPTION'S 9 pt IS THE CEILING, NOT THE TARGET. Matplotlib's sans has a larger x-height and
+# wider glyphs than the caption's face, so text set at the caption's nominal size reads about
+# twice its height on the page: measured on the rendered heatmap, a row of cell values inks 26
+# raster rows against the caption's 13 at the same resolution. Figure text sits a couple of
+# points below the caption, which is what a reader expects of an annotation.
+CAPTION_PT = 7.0
+
+
+def printed(frac):
+    """The width in inches at which the paper prints a figure set at `frac` of the text block."""
+    return frac * TEXTWIDTH_IN
 WINDOWS = ['1h', '1day', '1week', '1month']
 WLABEL = {'1h': 'hour', '1day': 'day', '1week': 'week', '1month': 'month'}
 QUERIES = [f'q{i:02d}' for i in range(1, 11)]
@@ -44,7 +64,10 @@ FCOLOR = {'baseline': '#52514e', 'in-file order': '#9ecae1', 'daily partition': 
           'sorted compact': '#eb6834'}
 WCOLOR = ['#c6dbef', '#6baed6', '#2171b5', '#08306b']
 # label offsets in points where the in-file orders, L1 and L0 crowd one another
-LABEL_AT = {'L0X': (-4, 8), 'L0H': (-26, 2), 'L0Z': (-22, -12), 'L1': (7, -3)}
+# Offsets in points, for the crowd of layouts that read a third of the table: at the
+# caption's size the labels are wider than the offsets tuned for a smaller one.
+LABEL_AT = {'L0X': (-34, 9), 'L0H': (-34, -3), 'L0Z': (-32, -15), 'L1': (9, -8),
+            'L0': (9, -16), 'L4': (9, 5), 'L3': (9, -9)}
 INK, MUTED, GRID = '#0b0b0b', '#52514e', '#d8d7d2'
 
 
@@ -108,7 +131,7 @@ def catalog_files(path):
 
 def pruning_figure(share, out):
     layouts = [lay for lay in LAYOUTS if (lay, '1h') in share]
-    fig, ax = plt.subplots(figsize=(10, 3.8))
+    fig, ax = plt.subplots(figsize=(printed(0.78), 2.7))
     width = 0.2
     for i, w in enumerate(WINDOWS):
         xs = [j + (i - 1.5) * width for j in range(len(layouts))]
@@ -117,10 +140,10 @@ def pruning_figure(share, out):
     ax.set_yscale('log')
     ax.set_ylim(0.1, 100)
     ax.set_xticks(range(len(layouts)))
-    ax.set_xticklabels(layouts, fontsize=9, color=INK)
-    ax.set_ylabel('bytes read (% of the layout)', fontsize=9, color=MUTED)
+    ax.set_xticklabels(layouts, fontsize=CAPTION_PT, color=INK)
+    ax.set_ylabel('bytes read (% of the layout)', fontsize=CAPTION_PT, color=MUTED)
     ax.yaxis.set_major_formatter(matplotlib.ticker.FuncFormatter(lambda v, _: f'{v:g}'))
-    ax.legend(title='window', fontsize=8, title_fontsize=8, frameon=False, ncol=4,
+    ax.legend(title='window', fontsize=CAPTION_PT, title_fontsize=CAPTION_PT, frameon=False, ncol=4,
               loc='lower center', bbox_to_anchor=(0.5, 1.0))
     style(ax)
     fig.tight_layout()
@@ -133,19 +156,24 @@ def heatmap_figure(sp, out):
     grid = [[geo([sp[(lay, w, q)] for w in WINDOWS]) for lay in layouts] for q in QUERIES]
     logs = [[math.log2(v) for v in row] for row in grid]
     lim = max(abs(v) for row in logs for v in row)
-    fig, ax = plt.subplots(figsize=(9.5, 4.6))
+    # DRAWN AT THE SIZE IT IS PRINTED, so a point here is a point on the page. The paper sets
+    # this figure at 0.78 of a 452.3 pt text block, which is 4.88 in: a figure drawn 9.5 in wide
+    # is then scaled by 0.51, and a 6.5 pt annotation reaches the reader at 3.3 pt against a 9 pt
+    # caption. Matching the width instead lets the sizes below BE the printed sizes, and the
+    # numbers the caption discusses are set at the caption's own 9 pt.
+    fig, ax = plt.subplots(figsize=(printed(0.78), 2.95))
     im = ax.imshow(logs, aspect='auto', cmap='RdBu', vmin=-lim, vmax=lim)
     ax.set_xticks(range(len(layouts)))
-    ax.set_xticklabels(layouts, fontsize=8, color=INK)
+    ax.set_xticklabels(layouts, fontsize=CAPTION_PT, color=INK)
     ax.set_yticks(range(len(QUERIES)))
-    ax.set_yticklabels([f'Q{i}' for i in range(1, 11)], fontsize=8, color=INK)
+    ax.set_yticklabels([f'Q{i}' for i in range(1, 11)], fontsize=CAPTION_PT, color=INK)
     for i, row in enumerate(grid):
         for j, v in enumerate(row):
-            ax.text(j, i, f'{v:.1f}', ha='center', va='center', fontsize=6.5,
+            ax.text(j, i, f'{v:.1f}', ha='center', va='center', fontsize=CAPTION_PT,
                     color='white' if abs(logs[i][j]) > lim * 0.55 else INK)
     cb = fig.colorbar(im, ax=ax)
-    cb.set_label('speedup over $L0$ ($\\log_2$)', fontsize=8, color=MUTED)
-    cb.ax.tick_params(colors=MUTED, labelsize=7)
+    cb.set_label('speedup over $L0$ ($\\log_2$)', fontsize=CAPTION_PT, color=MUTED)
+    cb.ax.tick_params(colors=MUTED, labelsize=CAPTION_PT)
     ax.tick_params(colors=MUTED, length=0)
     fig.tight_layout()
     fig.savefig(out, dpi=200, facecolor='white')
@@ -153,7 +181,9 @@ def heatmap_figure(sp, out):
 
 
 def tradeoff_figure(share, sp, repl, out):
-    fig, ax = plt.subplots(figsize=(7, 4.4))
+    # Set at the full text block: the point labels cluster where the daily layouts sit, and at
+    # the caption's size they touch in anything narrower.
+    fig, ax = plt.subplots(figsize=(printed(1.0), 3.0))
     seen = set()
     for lay in LAYOUTS:
         if (lay, '1h') not in share:
@@ -165,21 +195,21 @@ def tradeoff_figure(share, sp, repl, out):
                    edgecolor='white', linewidth=0.8, label=None if fam in seen else fam, zorder=3)
         seen.add(fam)
         ax.annotate(lay, (x, y), textcoords='offset points', xytext=LABEL_AT.get(lay, (6, 4)),
-                    fontsize=8, color=INK)
+                    fontsize=CAPTION_PT, color=INK)
     ax.axhline(1.0, color=MUTED, lw=1, ls=(0, (4, 3)))
     ax.set_xscale('log')
     ax.set_xlim(1, 150)
     ax.set_xticks([1, 2, 5, 10, 20, 50, 100])
     ax.xaxis.set_major_formatter(matplotlib.ticker.FuncFormatter(lambda v, _: f'{v:g}'))
     ax.xaxis.set_minor_formatter(matplotlib.ticker.NullFormatter())
-    ax.set_xlabel('bytes read (% of the layout, mean over regions and windows)', fontsize=9,
+    ax.set_xlabel('bytes read (% of the layout, mean over regions and windows)', fontsize=CAPTION_PT,
                   color=MUTED)
-    ax.set_ylabel('speedup over $L0$ (geometric mean)', fontsize=9, color=MUTED)
-    legend = ax.legend(fontsize=8, frameon=False, loc='upper right')
+    ax.set_ylabel('speedup over $L0$ (geometric mean)', fontsize=CAPTION_PT, color=MUTED)
+    legend = ax.legend(fontsize=CAPTION_PT, frameon=False, loc='upper right')
     for handle in legend.legend_handles:
         handle.set_sizes([40])
     ax.text(0.01, 0.02, 'point area: rows stored per row of $L0$', transform=ax.transAxes,
-            fontsize=7, color=MUTED)
+            fontsize=CAPTION_PT, color=MUTED)
     style(ax)
     fig.tight_layout()
     fig.savefig(out, dpi=200, facecolor='white')
@@ -190,7 +220,7 @@ def lakehouse_figure(files, total, lake, catalogs, out):
     """Files read and speedup of the queries through the catalogs over the plain files"""
     layouts = [lay for lay in LAYOUTS if lay in total]
     xs = list(range(len(layouts)))
-    fig, (a1, a2) = plt.subplots(1, 2, figsize=(11, 4))
+    fig, (a1, a2) = plt.subplots(1, 2, figsize=(printed(0.9), 3.0))
     width = 0.38
     a1.bar([x - width / 2 for x in xs], [files.get(('lake', lay), total[lay]) for lay in layouts],
            width, color='#9ecae1', label='data lake (read_parquet)', edgecolor='white')
@@ -200,7 +230,7 @@ def lakehouse_figure(files, total, lake, catalogs, out):
     # The floor lies below one file, so a layout whose queries read one file draws a bar
     a1.set_ylim(0.5, 10000)
     a1.yaxis.set_major_formatter(matplotlib.ticker.FuncFormatter(lambda v, _: f'{v:g}'))
-    a1.set_ylabel('files read per query window', fontsize=9, color=MUTED)
+    a1.set_ylabel('files read per query window', fontsize=CAPTION_PT, color=MUTED)
     a2_colors = {'iceberg': '#2a78d6', 'ducklake': '#eb6834'}
     for i, (name, t) in enumerate(catalogs.items()):
         sp = [geo([lake[k] / t[k] for k in t if k[0] == lay and k in lake]) for lay in layouts]
@@ -208,11 +238,11 @@ def lakehouse_figure(files, total, lake, catalogs, out):
                label=name.replace('iceberg', 'Iceberg').replace('ducklake', 'DuckLake'),
                edgecolor='white')
     a2.axhline(1.0, color=MUTED, lw=1, ls=(0, (4, 3)))
-    a2.set_ylabel('speedup over the plain files (geometric mean)', fontsize=9, color=MUTED)
+    a2.set_ylabel('speedup over the plain files (geometric mean)', fontsize=CAPTION_PT, color=MUTED)
     for ax in (a1, a2):
         ax.set_xticks(xs)
-        ax.set_xticklabels(layouts, fontsize=8, color=INK, rotation=45)
-        ax.legend(fontsize=8, frameon=False)
+        ax.set_xticklabels(layouts, fontsize=CAPTION_PT, color=INK, rotation=45)
+        ax.legend(fontsize=CAPTION_PT, frameon=False)
         style(ax)
     fig.tight_layout()
     fig.savefig(out, dpi=200, facecolor='white')
