@@ -50,7 +50,7 @@ QUERIES = {
     'q01': ('ports', None), 'q02': ('goteborg', None),
     'q03': ('belt', None), 'q04': ('belt', None), 'q05': ('belt', None),
     'q06': ('belt', None), 'q07': ('belt', None),
-    'q08': ('belt', 2000), 'q09': ('belt', 300), 'q10': ('belt', 500)}
+    'q08': ('belt', 2000), 'q09': ('belt', 300), 'q10': ('belt', None)}
 LAYOUTS = ['L0', 'L0X', 'L0Z', 'L0H', 'L1', 'L2', 'L3', 'L4', 'L1s', 'L2s', 'L3s', 'L4s']
 
 
