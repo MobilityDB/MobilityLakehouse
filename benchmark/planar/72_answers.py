@@ -5,8 +5,9 @@
             and covering form, after checking every run of a group gives the same answer;
   recall    for the queries whose answer counts entities that L0 maximizes (q01 vessels at both
             ports, q02 vessels in the port, q03 vessels in the belt, q07 vessels at an instant,
-            q09 and q10 vessel pairs) and for the vessel count inside q04's fleet summary: a
-            layout's count over L0's, per window, with the mean over the counting queries;
+            q09 vessel pairs, q10 the peak of vessels present at once) and for the vessel count
+            inside q04's fleet summary: a layout's count over L0's, per window, with the mean
+            over the counting queries;
   agreement every (source, bounds, layout) answer beside L0's for the same query and window, so a
             source or layout that disagrees on any query, counting or not, is listed.
 

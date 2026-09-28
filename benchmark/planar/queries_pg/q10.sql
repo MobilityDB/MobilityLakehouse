@@ -1,4 +1,5 @@
--- Query 10, encounter zone: how many vessel pairs came within 500 m of each other in the belt
--- during the window (gate 500 m)?
-SELECT count(DISTINCT (m1, m2)) AS n_pairs_500m FROM cand
-WHERE nearestApproachDistance(t1, t2) < 500;
+-- Query 10, peak occupancy: how many vessels were in the belt at the same time, at most, during
+-- the window? The pieces of a vessel are merged into one trajectory first, so the temporal count
+-- counts vessels and not the pieces a layout splits them into.
+SELECT maxValue(tCount(g)) AS peak_vessels
+FROM (SELECT mmsi, mergeAgg(g) AS g FROM clipped GROUP BY mmsi) s;
