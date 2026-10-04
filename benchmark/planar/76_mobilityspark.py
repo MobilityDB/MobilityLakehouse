@@ -2,23 +2,27 @@
 """The ten benchmark queries answered by MobilitySpark in Apache Spark over the L0 files of a run.
 
 Spark reads the L0 day files into the view `trips` as they are, the trajectory its EWKB bytes,
-which each query hands to MobilitySpark as hex text (`hex(trip)`), the form its generated functions
-read a temporal value in. The functions are MobilitySpark's generated surface, registered on one
-local session in UTC by spark/SparkQueries.java, which runs every query of every window in that
-session. Each query of queries_spark/ is the Spark SQL text of the query of the same name in
+which each query hands to MobilitySpark as hex text (`hex(trip)`). The functions are
+MobilitySpark's two generated surfaces, registered on one local session in UTC by
+spark/SparkQueries.java, which runs every query of every window in that session: the typed SQL
+surface, over a value of each MEOS type, which tgeompointFromHexEWKB reads the trajectory into,
+and under it the UDF surface over the bytes of a value, which answers a call the typed surface
+does not take. The session carries MobilitySpark's Catalyst rules, which leave the proximity
+queries' distance test after the bounds of their candidate join and compute each side of it once.
+Each query of queries_spark/ is the Spark SQL text of the query of the same name in
 queries/: the same prune on the covering columns followed by the same MEOS functions, its `:name`
 parameters bound as 70_queries.py binds them, a timestamp-with-zone literal handed to MEOS as text,
 which MobilitySpark parses with MEOS's own timestamptz_in. Each answer is compared with L0's in the
 answers table of 72_answers.py number by number, as 75_mobilitydb.py compares its own.
 
-A Spark name holds one function. MobilitySpark's surface lacks atStbox, xMin and xMax; its span
-binds bigint_to_span, its valueAtTimestamp binds tbool_value_at_timestamptz, its atTime hands a
-span in hex to timestamptz_in, and its round binds trgeometry_round in place of Spark's own. The
-queries therefore name the MEOS function the SQL name binds for a temporal point: tgeo_at_stbox
+The belt queries read the trajectory as a tgeompoint and answer with the names of queries/: atStbox
+over the box stboxFromText reads, startTimestamp and endTimestamp, xMin .. yMax of its stbox,
+length, speed, maxValue, atTime at an instant, nearestApproachDistance, eDwithin, and the
+aggregates mergeAgg and tCount. Queries 1 and 2 read the trajectory over the UDF surface, which
+holds the geometry Query 2 intersects, a type the typed surface does not carry: tgeo_at_stbox
 (trip, box, true) for atStbox, tstzspan_make for the span of two timestamps, temporal_at_tstzspan
-for atTime over it, temporal_at_timestamptz for the instant valueAtTimestamp reads, and
-stbox_xmin .. stbox_ymax over tspatial_to_stbox for a trajectory's extent; and they round a number
-by a cast to DECIMAL.
+for atTime over it, and eIntersects over the geometry's text. The UDF surface's round binds
+trgeometry_round in place of Spark's own, so the queries round a number by a cast to DECIMAL.
 
 Each answer is kept the moment Spark prints it, in the table's `.part` file beside it, so a session
 cut short (an out-of-memory stop, a restart of the machine) loses only the query it was running: the
