@@ -5,7 +5,11 @@
  * Blocks of Spark SQL over a table of trips, with the answer of each.
  *
  * The trips are the Parquet files named on the command line, read into the view `trips`, and the
- * MEOS functions are MobilitySpark's generated surface, registered on the session. Standard input
+ * MEOS functions are MobilitySpark's two generated surfaces, registered on the session: the UDF
+ * surface over the bytes of a value, then the typed SQL surface, whose names answer a typed value
+ * and hand any other argument to the UDF of the same name. The session carries MobilitySpark's
+ * Catalyst rules, which run a MobilitySpark call last in a join condition and compute each side of
+ * a nested-loop join once. Standard input
  * carries the blocks: a line `@@QUERY <label>` starts one, and its statements follow, each ending
  * with a semicolon at the end of a line. The first row of the last statement is the block's
  * answer, printed as `@@ANSWER <label>` and a tab and its fields joined by `|`, a null field as
@@ -26,6 +30,7 @@ import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.SparkSession;
 import org.mobilitydb.spark.generated.GeneratedSpatioTemporalUDFs;
+import org.mobilitydb.spark.sql.MobilitySparkSql;
 
 public final class SparkQueries {
 
@@ -36,12 +41,14 @@ public final class SparkQueries {
                 .master(System.getProperty("spark.master", "local[*]"))
                 .config("spark.ui.enabled", "false")
                 .config("spark.sql.session.timeZone", "UTC")
+                .config("spark.sql.extensions", "org.mobilitydb.spark.catalyst.MobilitySparkExtensions")
                 // A row carries a whole trajectory, so a small columnar batch keeps each buffer
                 // of the Parquet reader far below the heap
                 .config("spark.sql.parquet.columnarReaderBatchSize", "256")
                 .getOrCreate();
         spark.sparkContext().setLogLevel("WARN");
         GeneratedSpatioTemporalUDFs.registerAll(spark);
+        MobilitySparkSql.registerAll(spark);
         spark.read().parquet(args).createOrReplaceTempView("trips");
 
         BufferedReader in = new BufferedReader(new InputStreamReader(System.in, StandardCharsets.UTF_8));
