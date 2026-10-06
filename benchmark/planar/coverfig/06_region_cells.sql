@@ -9,14 +9,15 @@
 --
 -- Requires 02_natural_areas.sql.
 
--- The polygon the figures draw is the first part of the marine protected area the WHERE clause
--- below identifies, a site with five islands as holes, which is what makes the hole-aware fill
--- visible rather than incidental.
+-- The polygon the figures draw is the marine protected area the WHERE clause below identifies,
+-- Hesselø med omliggende stenrev (WDPA 555557023), whose hole, the island of Hesselø, encloses
+-- cells that no ring passes through: the fill tests them as a group of their own and discards it,
+-- which is what makes the hole-aware fill visible rather than incidental.
 DROP TABLE IF EXISTS FigRegion;
 CREATE TABLE FigRegion AS
 SELECT n.Id, n.SiteId, n.NameEng, n.DesigEng, d.path[1] AS Part, d.Geom
 FROM NaturalAreas n, ST_Dump(n.GeomLL) d
-WHERE n.Id = 17 AND d.path[1] = 1;
+WHERE n.Id = 16 AND d.path[1] = 1;
 
 DROP TABLE IF EXISTS FigRegionCells;
 CREATE TABLE FigRegionCells AS

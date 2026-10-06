@@ -12,8 +12,8 @@ CREATE TABLE FigFrame (Fig text PRIMARY KEY, Res integer, Excerpt text,
 INSERT INTO FigFrame VALUES
   ('trip_res8',   8, 'trip_res9',   ST_MakeEnvelope(591700, 6364383, 603700, 6373383, 25832)),
   ('trip_res9',   9, NULL,          ST_MakeEnvelope(598300, 6368430, 602300, 6371430, 25832)),
-  ('region_res8', 8, 'region_res9', ST_MakeEnvelope(580400, 6365150, 604400, 6383150, 25832)),
-  ('region_res9', 9, NULL,          ST_MakeEnvelope(594700, 6370300, 599900, 6374200, 25832));
+  ('region_res8', 8, 'region_res9', ST_MakeEnvelope(662849, 6227662, 673249, 6235462, 25832)),
+  ('region_res9', 9, NULL,          ST_MakeEnvelope(666322, 6230123, 669122, 6232223, 25832));
 
 -- The H3 grid over each frame: every cell whose boundary meets the frame
 DROP TABLE IF EXISTS FigGrid;
