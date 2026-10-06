@@ -17,6 +17,12 @@ conversion.
 — AIS vessel positions as temporal trajectories, explored interactively over an
 Iceberg lakehouse.
 
+📄 **Specification:** [TemporalParquet 2.0.0](https://github.com/MobilityDB/MobilityLakehouse/blob/main/spec/temporalparquet.md)
+— the open file format of the lakehouse, a Parquet footer-metadata convention
+modelled on GeoParquet. The [specification index](https://github.com/MobilityDB/MobilityLakehouse/tree/main/spec)
+lists it together with its companion documents: covering columns, table
+formats, and conformance.
+
 ---
 
 ## About
