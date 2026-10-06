@@ -14,7 +14,7 @@ defined by the following documents.
 
 | Document | What it defines |
 |---|---|
-| [TemporalParquet](temporalparquet.md) | The file format, version 2.0.0: each temporal column is a `BYTE_ARRAY` holding the MEOS-WKB encoding of its values, and a `temporal` footer key, modelled on GeoParquet, describes each column's base type, interpolation, and reference system. |
+| [TemporalParquet](../TemporalParquet.md) | The file format, version 2.0.0: each temporal column is a `BYTE_ARRAY` holding the MEOS-WKB encoding of its values, and a `temporal` footer key, modelled on GeoParquet, describes each column's base type, interpolation, and reference system. |
 | [Covering columns](covering-columns.md) | The bounding-box and time-span columns materialised alongside a temporal value, which let Parquet and Iceberg skip data before reading any trajectory. |
 | [Table formats](table-formats.md) | How TemporalParquet files are organised into Apache Iceberg and DuckLake tables. |
 | [Conformance](conformance.md) | What makes a file a valid MobilityLakehouse table, and what an engine must do to support it. |

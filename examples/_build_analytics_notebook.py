@@ -135,7 +135,7 @@ them as **functions of time**: length and speed, position at any instant, slices
 over windows, and spatiotemporal filters pruned by the covering columns. The same
 data, the same queries, run on MobilityDB, MobilityDuck, and MobilitySpark.
 
-Next: the [format specification](https://github.com/MobilityDB/MobilityLakehouse/blob/main/spec/temporalparquet.md), the
+Next: the [format specification](https://github.com/MobilityDB/MobilityLakehouse/blob/main/TemporalParquet.md), the
 [covering-columns](https://github.com/MobilityDB/MobilityLakehouse/blob/main/spec/covering-columns.md) mechanism, and the live
 [AIS Iceberg Explorer](https://ais-explorer-833836401560.europe-west1.run.app/).""")
 

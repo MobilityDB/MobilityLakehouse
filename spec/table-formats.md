@@ -39,7 +39,7 @@ both plain Parquet constructs:
 
 1. **A lossless value encoding** — the trajectory as compact MEOS-WKB in a
    Parquet `BYTE_ARRAY`, reconstructed by MEOS on read
-   ([TemporalParquet](https://github.com/MobilityDB/MobilityLakehouse/blob/main/spec/temporalparquet.md)).
+   ([TemporalParquet](https://github.com/MobilityDB/MobilityLakehouse/blob/main/TemporalParquet.md)).
 2. **Generated covering columns** — bounding-box and time-extent struct columns
    (`<col>_bbox`, a GeoParquet bounding box column, and `<col>_tspan`), so the table
    format's *existing* min/max, partition, and manifest machinery prunes files
@@ -113,7 +113,7 @@ is the same in every case.
 
 ## See also
 
-- [TemporalParquet](https://github.com/MobilityDB/MobilityLakehouse/blob/main/spec/temporalparquet.md) — the open file format
+- [TemporalParquet](https://github.com/MobilityDB/MobilityLakehouse/blob/main/TemporalParquet.md) — the open file format
 - [Covering columns](https://github.com/MobilityDB/MobilityLakehouse/blob/main/spec/covering-columns.md) — the pruning mechanism
 - [Conformance](https://github.com/MobilityDB/MobilityLakehouse/blob/main/spec/conformance.md) — conformant files and engines
 - [Roadmap](https://github.com/MobilityDB/MobilityLakehouse/blob/main/ROADMAP.md) — the ecosystem plan

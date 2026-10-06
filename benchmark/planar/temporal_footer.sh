@@ -3,7 +3,7 @@
 #
 #   temporal_footer.sh [SRID]        -> KV_METADATA {temporal: '{ ... }'}
 #
-# spec/temporalparquet.md 2.0.0 states the document: a `temporal` key whose value describes each
+# TemporalParquet.md 2.0.0 states the document: a `temporal` key whose value describes each
 # temporal column, coexisting with GeoParquet's `geo`. The zone's temporal column is `trip`, a
 # tgeompoint sequence in extended WKB, so a consumer reads the encoding, the base type, the
 # interpolation and the frame from the footer without decoding a row.

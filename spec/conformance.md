@@ -22,7 +22,7 @@ A TemporalParquet file is conformant when:
 2. **Footer** — the file's `key_value_metadata` carries a `temporal` key whose
    JSON describes each temporal column (`base_type`, `subtype`, `interpolation`,
    `srid`, `crs`, `edges`, `geodetic`, `has_z`, `encoding_version`), per the
-   [TemporalParquet spec](https://github.com/MobilityDB/MobilityLakehouse/blob/main/spec/temporalparquet.md).
+   [TemporalParquet spec](https://github.com/MobilityDB/MobilityLakehouse/blob/main/TemporalParquet.md).
 3. **Covering columns** — for each temporal column, the covering columns its
    class requires are present and correct, per the
    [covering-columns spec](https://github.com/MobilityDB/MobilityLakehouse/blob/main/spec/covering-columns.md):

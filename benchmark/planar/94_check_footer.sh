@@ -3,7 +3,7 @@
 #
 #   94_check_footer.sh [RUN]
 #
-# spec/temporalparquet.md states that a file carrying a temporal column carries a `temporal` key in
+# TemporalParquet.md states that a file carrying a temporal column carries a `temporal` key in
 # its Parquet footer describing that column. A file without one is read only by a consumer that
 # already knows what the blob is, which is the opposite of what the specification is for, and
 # nothing else in the pipeline notices: the footer is metadata, so every answer, every recall and

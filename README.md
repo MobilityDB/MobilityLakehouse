@@ -17,7 +17,7 @@ conversion.
 — AIS vessel positions as temporal trajectories, explored interactively over an
 Iceberg lakehouse.
 
-📄 **Specification:** [TemporalParquet 2.0.0](https://github.com/MobilityDB/MobilityLakehouse/blob/main/spec/temporalparquet.md)
+📄 **Specification:** [TemporalParquet 2.0.0](https://github.com/MobilityDB/MobilityLakehouse/blob/main/TemporalParquet.md)
 — the open file format of the lakehouse, a Parquet footer-metadata convention
 modelled on GeoParquet. The [specification index](https://github.com/MobilityDB/MobilityLakehouse/tree/main/spec)
 lists it together with its companion documents: covering columns, table
@@ -171,6 +171,6 @@ they move through are first-class and queried together.
 - **MobilityDB** — the temporal/spatiotemporal database — <https://github.com/MobilityDB/MobilityDB>
 - **MobilityDuck** — the DuckDB extension — <https://github.com/MobilityDB/MobilityDuck>
 - **MobilitySpark** — the Spark integration — <https://github.com/MobilityDB/MobilitySpark>
-- **Format specification** — [TemporalParquet](https://github.com/MobilityDB/MobilityLakehouse/blob/main/spec/temporalparquet.md) · [covering columns](https://github.com/MobilityDB/MobilityLakehouse/blob/main/spec/covering-columns.md) · [table formats](https://github.com/MobilityDB/MobilityLakehouse/blob/main/spec/table-formats.md) · [conformance](https://github.com/MobilityDB/MobilityLakehouse/blob/main/spec/conformance.md)
+- **Format specification** — [TemporalParquet](https://github.com/MobilityDB/MobilityLakehouse/blob/main/TemporalParquet.md) · [covering columns](https://github.com/MobilityDB/MobilityLakehouse/blob/main/spec/covering-columns.md) · [table formats](https://github.com/MobilityDB/MobilityLakehouse/blob/main/spec/table-formats.md) · [conformance](https://github.com/MobilityDB/MobilityLakehouse/blob/main/spec/conformance.md)
 - **Getting started** — the [end-to-end walkthrough](https://github.com/MobilityDB/MobilityLakehouse/blob/main/getting-started.md)
 - **Roadmap** — the [ecosystem plan](https://github.com/MobilityDB/MobilityLakehouse/blob/main/ROADMAP.md): temporal data made prunable across open table formats

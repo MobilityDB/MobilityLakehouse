@@ -97,5 +97,5 @@ convention.
 
 ## Related
 
-- [TemporalParquet](https://github.com/MobilityDB/MobilityLakehouse/blob/main/spec/temporalparquet.md) — the file format these columns live in
+- [TemporalParquet](https://github.com/MobilityDB/MobilityLakehouse/blob/main/TemporalParquet.md) — the file format these columns live in
 - [Getting started](https://github.com/MobilityDB/MobilityLakehouse/blob/main/getting-started.md) — write and query a pruned lakehouse

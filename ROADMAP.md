@@ -40,7 +40,7 @@ Two facts shape everything below.
 
 | Area | Status |
 | --- | --- |
-| Open file format ([TemporalParquet](https://github.com/MobilityDB/MobilityLakehouse/blob/main/spec/temporalparquet.md)) + [covering columns](https://github.com/MobilityDB/MobilityLakehouse/blob/main/spec/covering-columns.md) | specified |
+| Open file format ([TemporalParquet](https://github.com/MobilityDB/MobilityLakehouse/blob/main/TemporalParquet.md)) + [covering columns](https://github.com/MobilityDB/MobilityLakehouse/blob/main/spec/covering-columns.md) | specified |
 | [Table-format layer](https://github.com/MobilityDB/MobilityLakehouse/blob/main/spec/table-formats.md) — Iceberg default, DuckLake supported | specified |
 | Reference deployment ([AIS Iceberg Explorer](https://ais-explorer-833836401560.europe-west1.run.app/)) | live |
 | Runnable [examples](https://github.com/MobilityDB/MobilityLakehouse/blob/main/examples) on MobilityDuck | live |
