@@ -35,13 +35,13 @@ import matplotlib.pyplot as plt
 LAYOUTS = ['L0', 'L0X', 'L0Z', 'L0H', 'L1', 'L2', 'L3', 'L4', 'L1s', 'L2s', 'L3s', 'L4s']
 
 # THE PAGE THE FIGURES ARE PRINTED ON, so each can be DRAWN at the size it is SHOWN. A figure
-# drawn wider than its printed width is scaled down by `\includegraphics`, and its text with it:
-# at the sizes these were drawn before, a 9 pt label reached the reader at 4.4 to 6.6 pt beside a
-# 9 pt caption. `\the\textwidth` under acmart's acmlarge reads 452.295 pt, and a caption there is
-# `small`, which acmlarge resolves to 9 pt. TeX's point is 1/72.27 in where matplotlib's is 1/72,
-# which is the 72/72.27. Each figure below passes the fraction the paper's own
-# `\includegraphics` sets it at, so the two stay one statement rather than two.
-TEXTWIDTH_IN = 452.295 / 72.27
+# drawn at another width than its printed one is scaled by `\includegraphics`, and its text with
+# it, so a 7 pt label prints at another size than 7 pt. The paper is set in MDPI's class, whose
+# `\the\textwidth` reads 506.17435 pt on every page after the first, where the figures are.
+# TeX's point is 1/72.27 in where matplotlib's is 1/72, which is the 72.27. Each figure below
+# passes the fraction the paper's own `\includegraphics` sets it at, so the two stay one statement
+# rather than two.
+TEXTWIDTH_IN = 506.17435 / 72.27
 # THE CAPTION'S 9 pt IS THE CEILING, NOT THE TARGET. Matplotlib's sans has a larger x-height and
 # wider glyphs than the caption's face, so text set at the caption's nominal size reads about
 # twice its height on the page: measured on the rendered heatmap, a row of cell values inks 26
@@ -66,8 +66,10 @@ WCOLOR = ['#c6dbef', '#6baed6', '#2171b5', '#08306b']
 # label offsets in points where the in-file orders, L1 and L0 crowd one another
 # Offsets in points, for the crowd of layouts that read a third of the table: at the
 # caption's size the labels are wider than the offsets tuned for a smaller one.
+# L4 and L4s read the same bytes at the same speed, so their two labels sit on either side of the
+# one point they share; L2's sits under its point, clear of L3's large marker beside it.
 LABEL_AT = {'L0X': (-34, 9), 'L0H': (-34, -3), 'L0Z': (-32, -15), 'L1': (9, -8),
-            'L0': (9, -16), 'L4': (9, 5), 'L3': (9, -9)}
+            'L0': (9, -10), 'L4': (-22, 5), 'L2': (-6, -15), 'L3': (13, -4)}
 INK, MUTED, GRID = '#0b0b0b', '#52514e', '#d8d7d2'
 
 
@@ -82,7 +84,7 @@ def style(ax):
         ax.spines[s].set_visible(False)
     for s in ('left', 'bottom'):
         ax.spines[s].set_color(GRID)
-    ax.tick_params(colors=MUTED)
+    ax.tick_params(colors=MUTED, labelsize=CAPTION_PT)
 
 
 def bytes_read(path):
@@ -220,7 +222,7 @@ def lakehouse_figure(files, total, lake, catalogs, out):
     """Files read and speedup of the queries through the catalogs over the plain files"""
     layouts = [lay for lay in LAYOUTS if lay in total]
     xs = list(range(len(layouts)))
-    fig, (a1, a2) = plt.subplots(1, 2, figsize=(printed(0.9), 3.0))
+    fig, (a1, a2) = plt.subplots(1, 2, figsize=(printed(1.0), 3.0))
     width = 0.38
     a1.bar([x - width / 2 for x in xs], [files.get(('lake', lay), total[lay]) for lay in layouts],
            width, color='#9ecae1', label='data lake (read_parquet)', edgecolor='white')
@@ -241,8 +243,8 @@ def lakehouse_figure(files, total, lake, catalogs, out):
     a2.set_ylabel('speedup over the plain files (geometric mean)', fontsize=CAPTION_PT, color=MUTED)
     for ax in (a1, a2):
         ax.set_xticks(xs)
-        ax.set_xticklabels(layouts, fontsize=CAPTION_PT, color=INK, rotation=45)
-        ax.legend(fontsize=CAPTION_PT, frameon=False)
+        ax.set_xticklabels(layouts, fontsize=CAPTION_PT, color=INK)
+        ax.legend(fontsize=CAPTION_PT, frameon=False, loc='upper left')
         style(ax)
     fig.tight_layout()
     fig.savefig(out, dpi=200, facecolor='white')
