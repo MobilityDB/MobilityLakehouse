@@ -225,9 +225,9 @@ def lakehouse_figure(files, total, lake, catalogs, out):
     fig, (a1, a2) = plt.subplots(1, 2, figsize=(printed(1.0), 3.0))
     width = 0.38
     a1.bar([x - width / 2 for x in xs], [files.get(('lake', lay), total[lay]) for lay in layouts],
-           width, color='#9ecae1', label='data lake (read_parquet)', edgecolor='white')
+           width, color='#9ecae1', label='data lake', edgecolor='white')
     a1.bar([x + width / 2 for x in xs], [files[('iceberg', lay)] for lay in layouts], width,
-           color='#2a78d6', label='lakehouse (Iceberg)', edgecolor='white')
+           color='#2a78d6', label='lakehouse', edgecolor='white')
     a1.set_yscale('log')
     # The floor lies below one file, so a layout whose queries read one file draws a bar
     a1.set_ylim(0.5, 10000)
