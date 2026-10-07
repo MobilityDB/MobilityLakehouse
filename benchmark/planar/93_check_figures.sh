@@ -30,7 +30,8 @@ FIGURES="
 eval_month_pruning_bytes.png      figures
 eval_month_speedup_heatmap.png    figures
 eval_month_tradeoff.png           figures
-eval_month_lakehouse.png          figures           catalog-pruning.csv
+eval_month_lakehouse_files.png    figures           catalog-pruning.csv
+eval_month_lakehouse_speedup.png  figures           catalog-pruning.csv
 ds_spatial_heatmap.png            dataset-figures
 inorder_L0.png                    dataset-figures
 inorder_L0X.png                   dataset-figures

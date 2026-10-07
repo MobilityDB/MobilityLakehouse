@@ -10,12 +10,14 @@ PNG files in the output directory, from the tables reproduce.sh writes in the re
   eval_month_tradeoff.png         per layout, the geometric-mean speedup over every query and window against
                        the mean share of its bytes read over the sixteen region-window pairs, each
                        point sized by the rows the layout stores per row of L0 (storage.csv);
-  eval_month_lakehouse.png        per layout, the files a query's scan reads through the Iceberg catalog
+  eval_month_lakehouse_files.png  per layout, the files a query's scan reads through the Iceberg catalog
                        against those it reads over the plain files, the mean over the region-window
-                       pairs (catalog-pruning.csv), and the speedup of the queries through Iceberg
-                       and through DuckLake over the same queries on the plain files, the geometric
-                       mean over queries and windows (query-runtime-iceberg-summary.csv,
-                       query-runtime-ducklake-summary.csv); drawn when those three tables are there.
+                       pairs (catalog-pruning.csv);
+  eval_month_lakehouse_speedup.png per layout, the speedup of the queries through Iceberg and through
+                       DuckLake over the same queries on the plain files, the geometric mean over
+                       queries and windows (query-runtime-iceberg-summary.csv,
+                       query-runtime-ducklake-summary.csv); the two lakehouse figures are drawn
+                       when those three tables are there, as subfigures (a) and (b) of one figure.
 
   ./74_figures.py [RESULTS_DIR [OUTDIR]]
 
@@ -218,11 +220,14 @@ def tradeoff_figure(share, sp, repl, out):
     plt.close(fig)
 
 
-def lakehouse_figure(files, total, lake, catalogs, out):
-    """Files read and speedup of the queries through the catalogs over the plain files"""
+def lakehouse_figure(files, total, lake, catalogs, out_files, out_speedup):
+    """Files read and speedup of the queries through the catalogs over the plain files, as two
+    figures the paper sets side by side as subfigures (a) and (b), each sized at 0.48 of the text
+    block as #tradeoff_figure sizes its own at the fraction the paper prints it"""
     layouts = [lay for lay in LAYOUTS if lay in total]
     xs = list(range(len(layouts)))
-    fig, (a1, a2) = plt.subplots(1, 2, figsize=(printed(1.0), 3.0))
+    fig1, a1 = plt.subplots(figsize=(printed(0.48), 2.8))
+    fig2, a2 = plt.subplots(figsize=(printed(0.48), 2.8))
     width = 0.38
     a1.bar([x - width / 2 for x in xs], [files.get(('lake', lay), total[lay]) for lay in layouts],
            width, color='#9ecae1', label='data lake', edgecolor='white')
@@ -241,14 +246,14 @@ def lakehouse_figure(files, total, lake, catalogs, out):
                edgecolor='white')
     a2.axhline(1.0, color=MUTED, lw=1, ls=(0, (4, 3)))
     a2.set_ylabel('speedup over the plain files (geometric mean)', fontsize=CAPTION_PT, color=MUTED)
-    for ax in (a1, a2):
+    for fig, ax, out in ((fig1, a1, out_files), (fig2, a2, out_speedup)):
         ax.set_xticks(xs)
         ax.set_xticklabels(layouts, fontsize=CAPTION_PT, color=INK)
         ax.legend(fontsize=CAPTION_PT, frameon=False, loc='upper left')
         style(ax)
-    fig.tight_layout()
-    fig.savefig(out, dpi=200, facecolor='white')
-    plt.close(fig)
+        fig.tight_layout()
+        fig.savefig(out, dpi=200, facecolor='white')
+        plt.close(fig)
     return {name: {lay: geo([lake[k] / t[k] for k in t if k[0] == lay and k in lake])
                    for lay in layouts} for name, t in catalogs.items()}
 
@@ -278,7 +283,8 @@ def main():
         files, total = catalog_files(cat['pruning'])
         catalogs = {n: runtimes(cat[n], n) for n in ('iceberg', 'ducklake')}
         gain = lakehouse_figure(files, total, runtimes(summary, 'lake'), catalogs,
-                                os.path.join(outdir, 'eval_month_lakehouse.png'))
+                                os.path.join(outdir, 'eval_month_lakehouse_files.png'),
+                                os.path.join(outdir, 'eval_month_lakehouse_speedup.png'))
         for lay in LAYOUTS:
             if lay in total:
                 print(f'{lay} files lake {files.get(("lake", lay), total[lay]):.1f} '

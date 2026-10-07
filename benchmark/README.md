@@ -154,7 +154,7 @@ that list and fails where a step that ran left one of its figures undrawn:
 | figure | step |
 |---|---|
 | `eval_month_pruning_bytes.png`, `eval_month_speedup_heatmap.png`, `eval_month_tradeoff.png` | `figures` |
-| `eval_month_lakehouse.png` | `figures`, where the catalog steps have run |
+| `eval_month_lakehouse_files.png`, `eval_month_lakehouse_speedup.png` | `figures`, where the catalog steps have run |
 | `ds_spatial_heatmap.png`, `inorder.png` | `dataset-figures` |
 | `L2_tiling_wide.png`, `L2_tiling_zoom.png`, `L3_tiling_wide.png`, `L3_tiling_zoom.png`, `segment_raw.png`, `clean_segmented.png` | `layout-figures` |
 | `h3cover_trip_res8.png`, `h3cover_trip_res9.png`, `h3cover_region_res8.png`, `h3cover_region_res9.png` | `cover-figures` |
