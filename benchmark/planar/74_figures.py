@@ -189,11 +189,13 @@ def tradeoff_figure(share, sp, repl, out):
     # the caption's size they touch in anything narrower.
     fig, ax = plt.subplots(figsize=(printed(1.0), 3.0))
     seen = set()
+    ys = []
     for lay in LAYOUTS:
         if (lay, '1h') not in share:
             continue
         x = sum(share[(lay, w)] for w in WINDOWS) / len(WINDOWS)
         y = geo([sp[(lay, w, q)] for w in WINDOWS for q in QUERIES])
+        ys.append(y)
         fam = FAMILY[lay]
         ax.scatter(x, y, s=60 * repl.get(lay, 1.0), color=FCOLOR[fam], alpha=0.85,
                    edgecolor='white', linewidth=0.8, label=None if fam in seen else fam, zorder=3)
@@ -201,6 +203,9 @@ def tradeoff_figure(share, sp, repl, out):
         ax.annotate(lay, (x, y), textcoords='offset points', xytext=LABEL_AT.get(lay, (6, 4)),
                     fontsize=CAPTION_PT, color=INK)
     ax.axhline(1.0, color=MUTED, lw=1, ls=(0, (4, 3)))
+    # The axis is scaled to the point centres, so the largest marker, drawn at the highest point,
+    # is given a tenth of the axis above it to stay whole.
+    ax.set_ylim(top=max(ys) + 0.1 * (max(ys) - min(ys) + 1))
     ax.set_xscale('log')
     ax.set_xlim(1, 150)
     ax.set_xticks([1, 2, 5, 10, 20, 50, 100])
