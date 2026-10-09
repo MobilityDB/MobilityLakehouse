@@ -179,12 +179,20 @@ The `layout-figures` step adds the tiling and segmentation figures (`planar/79_l
 and `planar/layoutfig/`): `L2_tiling_wide.png` and `L3_tiling_wide.png` with their `_zoom`
 counterparts, the stored bounds of the regular and the adaptive tiling over the 50 km grid they cut
 on and the query region over both, and `segment_raw.png` and `clean_segmented.png`, one vessel's
-day as the feed reports it and as cleaning and segmentation leave it. Its layers come out of the
-run with DuckDB alone, since a segment's stored bounds and its tile are plain columns and a
-segment's trajectory is exactly the cleaned positions of its vessel inside its own time span, so
-the step needs no MEOS and no PostgreSQL; QGIS draws them with `coverfig/render_map.py`. The export
-also reports the counts the segmentation figure's caption states, read off the run rather than
-carried.
+day as the feed reports it and as cleaning and segmentation leave it; `tiling_L2_trip.png` and
+`tiling_L3_trip.png`, one trip as each tiling cuts it, each piece coloured by the file it is stored
+in (`layoutfig/02_trip_export.sql`); `q101_overview.png`, `q101_rodby.png` and
+`q101_puttgarden.png`, one ferry crossing as L0 and L3 store it and what the query of both ports
+does with each of its pieces (`layoutfig/03_crossing_export.sql`); and `usefulness_month.png`,
+`usefulness_query.png`, `usefulness_files.png` and `usefulness_admitted.png`, the month of the run,
+one query over one day, every L3 file as a cell of a day-by-cell grid, and the few files the
+catalog admits for that query (`layoutfig/04_usefulness_export.sql` and
+`layoutfig/usefulness_grid.py`). The tiling and segmentation layers come out of the run with
+DuckDB alone, since a segment's stored bounds and its tile are plain columns and a segment's
+trajectory is exactly the cleaned positions of its vessel inside its own time span; the trip,
+crossing and usefulness exports decode trajectories through MobilityDuck. None needs PostgreSQL,
+and QGIS draws the maps with `coverfig/render_map.py`. Each export also reports the counts its
+figure's caption states, read off the run rather than carried.
 
 The cell-cover figures are drawn by `planar/77_cover_figures.sh` and the scripts of
 `planar/coverfig/`, and they are a step of their own because they read the raw archives rather

@@ -62,6 +62,20 @@ COPY (SELECT box(x0, y0, x1, y1) AS geom FROM Tiles)
 TO (getvariable('stage') || '/tiles.gpkg')
 WITH (FORMAT GDAL, DRIVER 'GPKG', SRS 'EPSG:25832', LAYER_CREATION_OPTIONS 'GEOMETRY_NAME=geom');
 
+-- The same cells' boundaries, each drawn once as one line across the cells: a figure that dashes
+-- the boundaries over a map draws these, since two neighbouring cells share an edge, and the edge
+-- drawn twice with two dash phases reads as solid in places
+COPY (
+  SELECT ST_GeomFromText('LINESTRING(' || x || ' ' || (SELECT min(y0) FROM Tiles) || ',' || x ||
+                         ' ' || (SELECT max(y1) FROM Tiles) || ')') AS geom
+  FROM (SELECT x0 AS x FROM Tiles UNION SELECT x1 FROM Tiles)
+  UNION ALL
+  SELECT ST_GeomFromText('LINESTRING(' || (SELECT min(x0) FROM Tiles) || ' ' || y || ',' ||
+                         (SELECT max(x1) FROM Tiles) || ' ' || y || ')')
+  FROM (SELECT y0 AS y FROM Tiles UNION SELECT y1 FROM Tiles)
+) TO (getvariable('stage') || '/tile_lines.gpkg')
+WITH (FORMAT GDAL, DRIVER 'GPKG', SRS 'EPSG:25832', LAYER_CREATION_OPTIONS 'GEOMETRY_NAME=geom');
+
 -- The query regions the tiles are compared against: a tile prunes only while it is smaller than
 -- the region asked about.
 COPY (
@@ -118,7 +132,9 @@ SELECT CASE WHEN (SELECT count(*) FROM SegPos) <> (SELECT count(*) FROM Seg)
 
 -- The frame of each render, in the rendering CRS, each with a 4:3 aspect. The tiling frames are
 -- the study's own area and the strait the queries name; the track frames are the vessel's extent
--- with a margin, so the figure follows the data rather than a coordinate written twice.
+-- with a margin, so the figure follows the data rather than a coordinate written twice. The frames
+-- of 02_trip_export.sql, 03_crossing_export.sql and 04_usefulness_export.sql are stated here too,
+-- since those exports cut their layers to them.
 COPY (
   WITH L AS (
     SELECT min(ST_X(geom)) lx0, min(ST_Y(geom)) ly0,
@@ -138,6 +154,13 @@ COPY (
     UNION ALL SELECT 'L3_tiling_wide', 600000.0, 6013000.0, 700000.0, 6088000.0
     UNION ALL SELECT 'L2_tiling_zoom', 628000.0, 6033000.0, 672000.0, 6066000.0
     UNION ALL SELECT 'L3_tiling_zoom', 628000.0, 6033000.0, 672000.0, 6066000.0
+    UNION ALL SELECT 'tiling_L2_trip', 638000.0, 6041000.0, 662000.0, 6059000.0
+    UNION ALL SELECT 'tiling_L3_trip', 638000.0, 6041000.0, 662000.0, 6059000.0
+    UNION ALL SELECT 'q101_overview', 642500.0, 6041250.0, 653300.0, 6059250.0
+    UNION ALL SELECT 'q101_rodby', 649780.0, 6057390.0, 652780.0, 6059640.0
+    UNION ALL SELECT 'q101_puttgarden', 643120.0, 6040800.0, 646120.0, 6043050.0
+    UNION ALL SELECT 'usefulness_month', 210000.0, 5937000.0, 910000.0, 6462000.0
+    UNION ALL SELECT 'usefulness_query', 631415.0, 6038358.0, 663415.0, 6062358.0
     UNION ALL SELECT 'segment_raw', cx - hw, cy - hw * 3 / 4, cx + hw, cy + hw * 3 / 4 FROM B
     UNION ALL SELECT 'clean_segmented', cx - hw, cy - hw * 3 / 4, cx + hw, cy + hw * 3 / 4 FROM B)
   SELECT fig, round(x0) AS x0, round(y0) AS y0, round(x1) AS x1, round(y1) AS y1 FROM F

@@ -43,6 +43,12 @@ L3_tiling_wide.png                layout-figures
 L3_tiling_zoom.png                layout-figures
 segment_raw.png                   layout-figures
 clean_segmented.png               layout-figures
+tiling_L2_trip.png                layout-figures
+tiling_L3_trip.png                layout-figures
+usefulness_month.png              layout-figures
+usefulness_query.png              layout-figures
+usefulness_files.png              layout-figures
+usefulness_admitted.png           layout-figures
 h3cover_trip_res8.png             cover-figures
 h3cover_trip_res9.png             cover-figures
 h3cover_region_res8.png           cover-figures

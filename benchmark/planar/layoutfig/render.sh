@@ -1,13 +1,16 @@
 #!/usr/bin/env bash
-# Render the tiling and segmentation figures with QGIS and copy them to FIGURES_DEST.
+# Render the tiling, segmentation, query-trip and usefulness maps with QGIS and copy them to
+# FIGURES_DEST.
 #
-#   render.sh [L2_tiling_wide L3_tiling_wide L2_tiling_zoom L3_tiling_zoom segment_raw clean_segmented]
+#   render.sh [L2_tiling_wide L3_tiling_wide L2_tiling_zoom L3_tiling_zoom segment_raw clean_segmented
+#              tiling_L2_trip tiling_L3_trip q101_overview q101_rodby q101_puttgarden
+#              usefulness_month usefulness_query]
 #
 # This mirrors planar/coverfig/render.sh, whose renderer it reuses: the QGIS interpreter is named
 # the same way, the jobs are written into STAGE beside the layers, and the renderer itself is
 # coverfig/render_map.py rather than a copy of it.
 #
-# Environment: STAGE, holding the GeoPackages 01_export.sql writes; STAGE_QGIS, the same directory
+# Environment: STAGE, holding the GeoPackages the exports write; STAGE_QGIS, the same directory
 # as the QGIS process names it, where that differs; FIGURES_DEST, where the PNGs are copied;
 # QGIS_PYTHON, the command running an interpreter that carries the QGIS Python API, `python3` where
 # python3-qgis is installed, and from WSL against a QGIS on the Windows host the bat, whose path
@@ -19,7 +22,9 @@ HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 STAGE=${STAGE:?STAGE is required}
 DEST=${FIGURES_DEST:?FIGURES_DEST is required}
 QGIS_PYTHON=${QGIS_PYTHON:-python3}
-figs=${*:-L2_tiling_wide L3_tiling_wide L2_tiling_zoom L3_tiling_zoom segment_raw clean_segmented}
+figs=${*:-L2_tiling_wide L3_tiling_wide L2_tiling_zoom L3_tiling_zoom segment_raw clean_segmented
+  tiling_L2_trip tiling_L3_trip q101_overview q101_rodby q101_puttgarden usefulness_month
+  usefulness_query}
 
 mkdir -p "$STAGE" "$DEST"
 STAGE_QGIS=${STAGE_QGIS:-$STAGE} FRAMES="$STAGE/frames.csv" \
