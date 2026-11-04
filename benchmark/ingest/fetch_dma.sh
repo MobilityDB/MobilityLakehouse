@@ -7,7 +7,9 @@
 #
 # A download goes to <name>.part and is renamed only once curl finishes cleanly, so an interrupted
 # run never leaves a partial zip that raw_zone.sh would read as complete. A day whose zip, or whose
-# raw-zone Parquet, is already there is skipped, so a run resumes where it stopped.
+# raw-zone Parquet, is already there is skipped, so a run resumes where it stopped. Each download
+# is retried three times on any error, a connection that drops or times out included (curl
+# 7.71 or later).
 #
 # Usage:
 #   fetch_dma.sh FROM TO [--dir DIR] [--raw DIR] [--check]
@@ -65,7 +67,7 @@ while [[ ! "$d" > "$TO" ]]; do
     skipped=$((skipped + 1))
   else
     echo "fetching $name"
-    curl -fsS --retry 3 --max-time 3600 -o "$DIR/$name.part" "$BASE_URL/$name" || {
+    curl -fsS --retry 3 --retry-all-errors --max-time 3600 -o "$DIR/$name.part" "$BASE_URL/$name" || {
       rm -f "$DIR/$name.part"; echo "fetch_dma.sh: the download of $name failed" >&2; exit 1; }
     mv "$DIR/$name.part" "$DIR/$name"
     got=$((got + 1))
