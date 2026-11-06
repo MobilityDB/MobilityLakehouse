@@ -1,17 +1,18 @@
 #!/usr/bin/env bash
 # The sorted-compact layouts L1s, L2s, L3s and L4s of the planar corpus: each partition of the daily
-# layout L1..L4 (a hash shard, a tile, a time bin) gathered from its daily files into one monthly
-# file, its rows sorted by the lexicographic key of L0X (the box centre's cell on the run's grid,
+# layout L1..L4 (a hash shard, a tile, a time bin) gathered from its daily files into one file per
+# calendar month, `month-YYYY-MM.parquet` in the partition's directory, its rows sorted by the lexicographic key of L0X (the box centre's cell on the run's grid,
 # then the start time), in row groups of 2048 rows, the smallest DuckDB writes. Compaction and the
 # sort go together: merging the daily files alone widens each file's bounds, and the sort is what
 # lets a query skip row groups inside the merged file. The partition value stays in the object key
 # (Hive directories) and out of the file, as in the daily layout.
 #
-# ONE COPY PER PARTITION. A single `COPY (... ORDER BY ...) TO dir (PARTITION_BY ...)` over all
-# partitions leaves runs out of order inside some partition files (measured on the probe days: 1-3
-# breaks per layout, each a sorted run restarting near a file's end), while the same sorted query
-# written for one partition keeps its order. Each COPY reads only its partition's daily files,
-# since the filter on the Hive key prunes the others by path.
+# ONE COPY PER PARTITION AND MONTH. A single `COPY (... ORDER BY ...) TO dir (PARTITION_BY ...)`
+# over all partitions leaves runs out of order inside some partition files (measured on the probe
+# days: 1-3 breaks per layout, each a sorted run restarting near a file's end), while the same
+# sorted query written for one partition keeps its order. Each COPY reads only its partition's
+# daily files of its month: the month's day directories select the files by path, and the filter
+# on the Hive key prunes the other partitions.
 #
 #   RUN=data/stage/planar/2026-01-01_2026-02-01 benchmark/planar/42_compact_layouts.sh [L1 L2 L3 L4]
 #
@@ -60,12 +61,14 @@ for L in ${@:-L1 L2 L3 L4}; do
   rm -rf "$dest"
   mkdir -p "$dest"
 
-  # Each partition as its Hive path (key=value/...) and its SQL filter (key = value AND ...)
+  # Each partition of each month as the month (YYYY-MM, from the day directory the daily file sits
+  # in), its Hive path (key=value/...) and its SQL filter (key = value AND ...)
   parts=$("$DUCKDB" -unsigned -noheader -list -c "
     SELECT DISTINCT
+      regexp_extract(filename, '/day-([0-9]{4}-[0-9]{2})-[0-9]{2}/', 1) || '|' ||
       concat_ws('/', $(echo "$k" | sed "s/\([a-z_]*\)/'\1=' || \1/g")) || '|' ||
       concat_ws(' AND ', $(echo "$k" | sed "s/\([a-z_]*\)/'\1 = ' || \1/g"))
-    FROM read_parquet('$daily', hive_partitioning = true) ORDER BY 1;")
+    FROM read_parquet('$daily', hive_partitioning = true, filename = true) ORDER BY 1;")
   [ -n "$parts" ] || { echo "$L: no partitions found" >&2; exit 1; }
 
   script="$RUN/gen/compact-$L.sql"
@@ -77,11 +80,12 @@ for L in ${@:-L1 L2 L3 L4}; do
     # A multi-threaded COPY treats ROW_GROUP_SIZE as a target (row groups of up to 4,039 rows were
     # measured at 2048); one writer thread keeps every group within it.
     echo "SET threads = 1;"
-    while IFS='|' read -r path filter; do
+    while IFS='|' read -r month path filter; do
       mkdir -p "$dest/$path"
-      echo "COPY (SELECT * EXCLUDE ($k) FROM read_parquet('$daily', hive_partitioning = true)"
+      echo "COPY (SELECT * EXCLUDE ($k)"
+      echo "      FROM read_parquet('$RUN/layouts_daily/$L/day-$month-*/**/*.parquet', hive_partitioning = true)"
       echo "      WHERE $filter ORDER BY $CX, $CY, trip_tmin)"
-      echo "  TO '$dest/$path/data_0.parquet' (FORMAT parquet, ROW_GROUP_SIZE 2048, COMPRESSION zstd, $TEMPORAL_FOOTER);"
+      echo "  TO '$dest/$path/month-$month.parquet' (FORMAT parquet, ROW_GROUP_SIZE 2048, COMPRESSION zstd, $TEMPORAL_FOOTER);"
     done <<< "$parts"
   } > "$script"
   t0=$(date +%s)
