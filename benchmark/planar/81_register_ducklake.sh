@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Load the layouts of a run into DuckLake tables, one native INSERT per layout file, so each layout
 # file becomes exactly one DuckLake data file holding the same rows in the same order, with the
-# layout's row-group size (2048 for the sorted layouts L0X/L0Z/L0H and L1s-L4s, DuckDB's default
+# layout's row-group size (2048 for L0X/L0Z/L0H/L0r, L2d/L3d, L1s-L4s and L1cr-L4cr, DuckDB's default
 # otherwise), zstd, and no rows inlined into the catalog. DuckLake writes those files itself under
 # s3://warehouse/ducklake/<namespace>/: its file pruning reads the statistics of files it wrote and
 # skips none for files registered with ducklake_add_data_files (duckdb/ducklake issue #1442), so a
@@ -33,9 +33,9 @@ ATTACH 'ducklake:$META' AS dl (DATA_PATH 's3://warehouse/ducklake/$NS/');"
 layout_files() {
   case "$1" in
     L0)          (cd "$RUN" && ls L0/year=*/month=*/day-*.parquet) ;;
-    L0X|L0Z|L0H) (cd "$RUN" && ls layouts_daily/"$1"/day-*.parquet) ;;
-    L1|L2|L3|L4) (cd "$RUN" && find layouts_daily/"$1" -name '*.parquet' | sort) ;;
-    L1s|L2s|L3s|L4s) (cd "$RUN" && find layout_compact/"$1" -name '*.parquet' | sort) ;;
+    L0X|L0Z|L0H|L0r) (cd "$RUN" && ls layouts_daily/"$1"/day-*.parquet) ;;
+    L1|L2|L3|L4|L2d|L3d) (cd "$RUN" && find layouts_daily/"$1" -name '*.parquet' | sort) ;;
+    L1s|L2s|L3s|L4s|L[1-4]c|L[1-4]cr) (cd "$RUN" && find layout_compact/"$1" -name '*.parquet' | sort) ;;
     *) echo "unknown layout $1" >&2; return 1 ;;
   esac
 }
@@ -43,7 +43,7 @@ layout_files() {
 # The row-group size the layout was written with
 row_group_size() {
   case "$1" in
-    L0X|L0Z|L0H|L1s|L2s|L3s|L4s) echo 2048 ;;
+    L0X|L0Z|L0H|L0r|L2d|L3d|L1s|L2s|L3s|L4s|L[1-4]cr) echo 2048 ;;
     *) echo 122880 ;;
   esac
 }

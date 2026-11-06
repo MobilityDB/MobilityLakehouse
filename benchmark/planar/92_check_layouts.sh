@@ -3,11 +3,14 @@
 # examined beside what broke:
 #   schema      exactly L0's columns and types (the trips schema), so no Hive path key or
 #               partition column leaks into a file;
-#   rows        a layout that never cuts a trajectory (L0X, L0Z, L0H, L1, L1s) holds L0's rows,
-#               and a compact layout holds its daily layout's rows (L2s = L2, L3s = L3, L4s = L4);
-#   row groups  the sorted layouts (L0X, L0Z, L0H, L1s..L4s) write groups of at most 2048 rows;
-#   order       the lexicographically sorted files (L0X, L1s..L4s) have no row whose (cell x,
-#               cell y, start time) key is below the row before it.
+#   rows        a layout that never cuts a trajectory (L0X, L0Z, L0H, L0r, L1, L1s, L1c, L1cr)
+#               holds L0's rows, and a layout rewritten from a daily one holds its rows (L2s, L2c,
+#               L2cr, L2d = L2, and likewise for L3 and L4);
+#   row groups  the layouts written in groups of 2048 rows (L0X, L0Z, L0H, L0r, L2d, L3d, L1s..L4s,
+#               L1cr..L4cr) have none larger;
+#   order       the lexicographically sorted files (L0X, L2d, L3d, L1s..L4s) have no row whose
+#               (cell x, cell y, start time) key is below the row before it.
+# The ablation layouts of 43_ablation_layouts.sh are checked when they exist.
 # Exits non-zero on any failure.
 #
 #   RUN=data/stage/planar/2026-01-01_2026-02-01 benchmark/planar/92_check_layouts.sh
@@ -30,9 +33,9 @@ CY="least(65535, greatest(0, (((trip_ymin + trip_ymax) / 2 - $GY0) / ($GY1 - $GY
 layout_glob() {
   case "$1" in
     L0)          echo "$RUN/L0/year=*/month=*/day-*.parquet" ;;
-    L0X|L0Z|L0H) echo "$RUN/layouts_daily/$1/day-*.parquet" ;;
-    L1|L2|L3|L4) echo "$RUN/layouts_daily/$1/day-*/**/*.parquet" ;;
-    L1s|L2s|L3s|L4s) echo "$RUN/layout_compact/$1/**/*.parquet" ;;
+    L0X|L0Z|L0H|L0r) echo "$RUN/layouts_daily/$1/day-*.parquet" ;;
+    L1|L2|L3|L4|L2d|L3d) echo "$RUN/layouts_daily/$1/day-*/**/*.parquet" ;;
+    L1s|L2s|L3s|L4s|L[1-4]c|L[1-4]cr) echo "$RUN/layout_compact/$1/**/*.parquet" ;;
   esac
 }
 
@@ -46,10 +49,11 @@ nrows[L0]=$(rows "$(layout_glob L0)")
 fail=0
 report() { printf '%-4s %-11s %s\n' "$1" "$2" "$3"; [ "$4" = ok ] || fail=1; }
 
-for L in L0X L0Z L0H L1 L2 L3 L4 L1s L2s L3s L4s; do
+for L in L0X L0Z L0H L1 L2 L3 L4 L1s L2s L3s L4s \
+         L0r L1c L2c L3c L4c L1cr L2cr L3cr L4cr L2d L3d; do
   g=$(layout_glob "$L")
   case "$L" in
-    L0X|L0Z|L0H|L1|L2|L3|L4) dir="$RUN/layouts_daily/$L" ;;
+    L0X|L0Z|L0H|L0r|L1|L2|L3|L4|L2d|L3d) dir="$RUN/layouts_daily/$L" ;;
     *) dir="$RUN/layout_compact/$L" ;;
   esac
   [ -n "$(find "$dir" -name '*.parquet' -print -quit 2>/dev/null)" ] \
@@ -63,8 +67,11 @@ for L in L0X L0Z L0H L1 L2 L3 L4 L1s L2s L3s L4s; do
          FROM read_parquet('$g', hive_partitioning = false);")
   [ "$d" = 0 ] && report "$L" duplicates "0" ok || report "$L" duplicates "$d duplicate rows" fail
   case "$L" in
-    L0X|L0Z|L0H|L1|L1s) ref=L0 ;;
+    L0X|L0Z|L0H|L0r|L1|L1s|L1c|L1cr) ref=L0 ;;
     L2s|L3s|L4s) ref=${L%s} ;;
+    L2c|L3c|L4c) ref=${L%c} ;;
+    L2cr|L3cr|L4cr) ref=${L%cr} ;;
+    L2d|L3d) ref=${L%d} ;;
     *) ref= ;;
   esac
   if [ -n "$ref" ]; then
@@ -74,13 +81,13 @@ for L in L0X L0Z L0H L1 L2 L3 L4 L1s L2s L3s L4s; do
     report "$L" rows "${nrows[$L]}" ok
   fi
   case "$L" in
-    L0X|L0Z|L0H|L1s|L2s|L3s|L4s)
+    L0X|L0Z|L0H|L0r|L2d|L3d|L1s|L2s|L3s|L4s|L1cr|L2cr|L3cr|L4cr)
       m=$(q "SELECT max(row_group_num_rows) FROM parquet_metadata('$g');")
       [ "$m" -le 2048 ] && report "$L" row-groups "max $m rows" ok \
         || report "$L" row-groups "max $m rows > 2048" fail ;;
   esac
   case "$L" in
-    L0X|L1s|L2s|L3s|L4s)
+    L0X|L2d|L3d|L1s|L2s|L3s|L4s)
       b=$(q "SELECT count(*) FILTER (WHERE pcx > cx OR (pcx = cx AND pcy > cy) OR (pcx = cx AND pcy = cy AND pt > t))
              FROM (SELECT cx, cy, t, lag(cx) OVER w AS pcx, lag(cy) OVER w AS pcy, lag(t) OVER w AS pt
                    FROM (SELECT filename, file_row_number AS rn, $CX AS cx, $CY AS cy, trip_tmin AS t

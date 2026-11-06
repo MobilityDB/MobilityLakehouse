@@ -27,9 +27,9 @@ RUN=${RUN:?RUN is required}
 LAYOUT=${LAYOUT:-L0}
 case "$LAYOUT" in
   L0)          DIR="$RUN/L0"; FILES="$DIR/year=*/month=*/day-*.parquet"; BASE=trips ;;
-  L0X|L0Z|L0H) DIR="$RUN/layouts_daily/$LAYOUT"; FILES="$DIR/day-*.parquet"; BASE="trips-$LAYOUT" ;;
-  L1|L2|L3|L4) DIR="$RUN/layouts_daily/$LAYOUT"; FILES="$DIR/day-*/**/*.parquet"; BASE="trips-$LAYOUT" ;;
-  L1s|L2s|L3s|L4s) DIR="$RUN/layout_compact/$LAYOUT"; FILES="$DIR/**/*.parquet"; BASE="trips-$LAYOUT" ;;
+  L0X|L0Z|L0H|L0r) DIR="$RUN/layouts_daily/$LAYOUT"; FILES="$DIR/day-*.parquet"; BASE="trips-$LAYOUT" ;;
+  L1|L2|L3|L4|L2d|L3d) DIR="$RUN/layouts_daily/$LAYOUT"; FILES="$DIR/day-*/**/*.parquet"; BASE="trips-$LAYOUT" ;;
+  L1s|L2s|L3s|L4s|L[1-4]c|L[1-4]cr) DIR="$RUN/layout_compact/$LAYOUT"; FILES="$DIR/**/*.parquet"; BASE="trips-$LAYOUT" ;;
   *) echo "unknown layout $LAYOUT" >&2; exit 1 ;;
 esac
 # The engine is DUCKDB_ENGINE when set, else the one engine.path names; every call goes through

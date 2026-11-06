@@ -34,9 +34,9 @@ trap 'rm -rf "$SPILL"' EXIT
 layout_glob() {
   case "$1" in
     L0)          echo "$RUN/L0/year=*/month=*/day-*.parquet" ;;
-    L0X|L0Z|L0H) echo "$RUN/layouts_daily/$1/day-*.parquet" ;;
-    L1|L2|L3|L4) echo "$RUN/layouts_daily/$1/day-*/**/*.parquet" ;;
-    L1s|L2s|L3s|L4s) echo "$RUN/layout_compact/$1/**/*.parquet" ;;
+    L0X|L0Z|L0H|L0r) echo "$RUN/layouts_daily/$1/day-*.parquet" ;;
+    L1|L2|L3|L4|L2d|L3d) echo "$RUN/layouts_daily/$1/day-*/**/*.parquet" ;;
+    L1s|L2s|L3s|L4s|L[1-4]c|L[1-4]cr) echo "$RUN/layout_compact/$1/**/*.parquet" ;;
     *) echo "unknown layout $1" >&2; return 1 ;;
   esac
 }
