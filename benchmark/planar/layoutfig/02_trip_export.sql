@@ -39,8 +39,8 @@ WHERE l.segment_type = 'In motion' AND l.mmsi = getvariable('trip_vessel');
 
 CREATE OR REPLACE TABLE TripL2 AS
 SELECT t.mmsi, s.tpoint AS p,
-  (floor(ST_X(s.spaceBin) / getvariable('cell')))::INTEGER AS cell_x,
-  (floor(ST_Y(s.spaceBin) / getvariable('cell')))::INTEGER AS cell_y
+  (floor(ST_X(s.point) / getvariable('cell')))::INTEGER AS cell_x,
+  (floor(ST_Y(s.point) / getvariable('cell')))::INTEGER AS cell_y
 FROM Trip t, spaceSplit(t.trip, getvariable('cell'), getvariable('cell'), getvariable('cell')) s
 WHERE t.trip IS NOT NULL AND s.tpoint IS NOT NULL;
 
