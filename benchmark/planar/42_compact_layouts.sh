@@ -22,7 +22,7 @@
 #
 # Environment: RUN (required); ROOT (the repository's data/), the tree holding log/ and tmp/;
 # DUCKDB; LAYOUT_MEMORY (12GB); LAYOUT_THREADS (4); COMPACT_SORT (1); COMPACT_ROW_GROUP (2048);
-# COMPACT_SUFFIX (s).
+# COMPACT_SUFFIX (s); L3_BIN_SECONDS (unset), as the daily L3 was built with.
 set -euo pipefail
 
 ROOT=${ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)/data}
@@ -61,7 +61,9 @@ ORDER=" ORDER BY filename, file_row_number"
 keys() {
   case "$1" in
     L1) echo "shard" ;;
-    L2|L3) echo "cell_x,cell_y" ;;
+    L2) echo "cell_x,cell_y" ;;
+    # L3 built with L3_BIN_SECONDS (41_part_layouts.sh) also carries its time bin
+    L3) echo "cell_x,cell_y${L3_BIN_SECONDS:+,time_bin}" ;;
     L4) echo "time_bin" ;;
     *) echo "unknown layout $1" >&2; return 1 ;;
   esac

@@ -222,5 +222,10 @@ several together: L0r (L0's row order in groups of 2048 rows), L1c to L4c (each 
 files gathered into one file per month in their row order, in groups of 122,880 rows), L1cr to L4cr
 (the same in groups of 2048 rows) and L2d and L3d (each daily file of L2 and L3 sorted by L0X's
 key); every reading step takes them by name, as `LAYOUTS="L0r L1c"` or `--layouts L0r L1c`.
-`STEPS=cold` adds the timing after dropping the page cache before
+`STEPS=sensitivity-layouts` rebuilds the spatial layouts with one parameter the eleven hold fixed
+changed (`planar/44_sensitivity_layouts.sh`): L2, L3 and L3s on 25 and 100 km cells and on the 50 km
+grid moved by half a cell, L3 and L3s grouping 16, 32 or 128 segments into one box, and L3 also cut
+at one-hour or six-hour bins. Each variant is a run of its own under the run's `sensitivity/`,
+holding a link to its L0 and a copy of its grid, so every reading step reads it with `RUN` set to
+it. `STEPS=cold` adds the timing after dropping the page cache before
 every run, which needs passwordless `sudo tee /proc/sys/vm/drop_caches`.
