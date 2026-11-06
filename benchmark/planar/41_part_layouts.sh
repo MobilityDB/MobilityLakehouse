@@ -21,12 +21,20 @@
 # and SPAN lines also carry each layer's own seconds, the loading of the day the layers share
 # counted as setup.
 #
+# The spatial layouts' parameters are the sensitivity study's knobs: CELL_SIZE, the side of the
+# region cell; GRID_SHIFT, the offset of the grid's origin along both axes, so that 25000 with
+# 50000-metre cells moves every cell boundary by half a cell; ADAPTIVE_NSEG, the segments L3 groups
+# into one box; and L3_BIN_SECONDS, which, when set, also cuts each piece of L3 at the time bins of
+# that length and makes the bin a third partition key, a stationary segment going whole to the bin
+# of its start. A variant is built into a run of its own holding the base run's L0 and grid, so the
+# layouts keep their names and every reading step reads the variant as it reads the base.
+#
 #   RUN=data/stage/planar/2026-01-01_2026-02-01 benchmark/planar/41_part_layouts.sh [day ...]
 #
 # Environment: RUN (required); ROOT (the repository's data/), the tree holding log/ and tmp/;
 # DUCKDB (a MobilityDuck whose timeSplit takes a column); LAYERS ("L1 L2 L3 L4", "L2 L3 L4" under
-# SPAN_COUNT); LAYOUT_MEMORY (12GB); LAYOUT_THREADS (4); CELL_SIZE (50000); ADAPTIVE_NSEG (64);
-# TIME_BIN_SECONDS (3600); SPAN_COUNT (unset).
+# SPAN_COUNT); LAYOUT_MEMORY (12GB); LAYOUT_THREADS (4); CELL_SIZE (50000); GRID_SHIFT (0);
+# ADAPTIVE_NSEG (64); L3_BIN_SECONDS (unset); TIME_BIN_SECONDS (3600); SPAN_COUNT (unset).
 set -euo pipefail
 
 ROOT=${ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)/data}
@@ -44,7 +52,9 @@ if [ -n "$SPAN_COUNT" ]; then LAYERS=${LAYERS:-"L2 L3 L4"}; else LAYERS=${LAYERS
 MEM=${LAYOUT_MEMORY:-12GB}
 THREADS=${LAYOUT_THREADS:-4}
 CELL=${CELL_SIZE:-50000.0}
+SHIFT=${GRID_SHIFT:-0.0}
 NSEG=${ADAPTIVE_NSEG:-64}
+L3BIN=${L3_BIN_SECONDS:-}
 BINSEC=${TIME_BIN_SECONDS:-3600}
 SPILL="$ROOT/tmp/spill.$$.$(date +%s%N)"
 mkdir -p "$SPILL" "$RUN/gen" "$ROOT/log"
@@ -66,9 +76,17 @@ COLS="MMSI, ship_type, segment_type, asEWKB(p) AS trip,
 # The same columns for a stationary segment, which L0 already carries.
 SCOLS="MMSI, ship_type, segment_type, trip, trip_bbox, trip_tspan,
   trip_xmin, trip_ymin, trip_xmax, trip_ymax, trip_tmin, trip_tmax, srid, dt"
-# The region cell of a box centre.
-CELLX="(floor(((trip_bbox.xmin + trip_bbox.xmax) / 2) / $CELL))::INTEGER"
-CELLY="(floor(((trip_bbox.ymin + trip_bbox.ymax) / 2) / $CELL))::INTEGER"
+# The region cell of a box centre, on the grid whose origin is (GRID_SHIFT, GRID_SHIFT).
+CELLX="(floor(((trip_bbox.xmin + trip_bbox.xmax) / 2 - $SHIFT) / $CELL))::INTEGER"
+CELLY="(floor(((trip_bbox.ymin + trip_bbox.ymax) / 2 - $SHIFT) / $CELL))::INTEGER"
+# L3's partition keys and the time bin of a stationary segment, its start's, when L3 is binned.
+if [ -n "$L3BIN" ]; then
+  L3KEYS="cell_x, cell_y, time_bin"
+  L3SBIN=", (floor(epoch(trip_tmin) / $L3BIN))::BIGINT"
+else
+  L3KEYS="cell_x, cell_y"
+  L3SBIN=""
+fi
 # The one check a split piece passes: its time span lies within its parent's.
 KEEP="Tmin(b)::TIMESTAMP >= ptmin AND Tmax(b)::TIMESTAMP <= ptmax"
 
@@ -140,9 +158,9 @@ HDR
 CREATE OR REPLACE TEMP TABLE l2 AS
 SELECT m.MMSI, m.ship_type, m.segment_type, m.dt, m.ptmin, m.ptmax, s.tpoint AS p,
   stbox(s.tpoint) AS b,
-  (floor(ST_X(s.point) / $CELL))::INTEGER AS cell_x,
-  (floor(ST_Y(s.point) / $CELL))::INTEGER AS cell_y
-FROM moving m, spaceSplit(m.trip, $CELL, $CELL, $CELL) s
+  (floor((ST_X(s.point) - $SHIFT) / $CELL))::INTEGER AS cell_x,
+  (floor((ST_Y(s.point) - $SHIFT) / $CELL))::INTEGER AS cell_y
+FROM moving m, spaceSplit(m.trip, $CELL, $CELL, $CELL, ST_Point($SHIFT, $SHIFT), true) s
 WHERE s.tpoint IS NOT NULL;
 HDR
       discard L2 l2
@@ -168,17 +186,26 @@ WITH pieces AS (
   SELECT MMSI, ship_type, segment_type, dt, ptmin, ptmax,
     unnest(list_transform(splitEachNStboxes(trip, $NSEG), lambda bx: atStbox(trip, bx))) AS p
   FROM moving)
-SELECT *, stbox(p) AS b FROM pieces WHERE p IS NOT NULL;
 HDR
+      if [ -n "$L3BIN" ]; then
+        cat <<HDR
+SELECT q.MMSI, q.ship_type, q.segment_type, q.dt, q.ptmin, q.ptmax, s.temp AS p, stbox(s.temp) AS b,
+  (floor(epoch(s.time) / $L3BIN))::BIGINT AS time_bin
+FROM pieces q, timeSplit(q.p, to_seconds($L3BIN)) s
+WHERE q.p IS NOT NULL AND s.temp IS NOT NULL;
+HDR
+      else
+        echo "SELECT *, stbox(p) AS b FROM pieces WHERE p IS NOT NULL;"
+      fi
       discard L3 l3
       build_only <<HDR
 COPY (
-  SELECT $COLS, (floor(((Xmin(b) + Xmax(b)) / 2) / $CELL))::INTEGER AS cell_x,
-    (floor(((Ymin(b) + Ymax(b)) / 2) / $CELL))::INTEGER AS cell_y
+  SELECT $COLS, (floor(((Xmin(b) + Xmax(b)) / 2 - $SHIFT) / $CELL))::INTEGER AS cell_x,
+    (floor(((Ymin(b) + Ymax(b)) / 2 - $SHIFT) / $CELL))::INTEGER AS cell_y${L3BIN:+, time_bin}
   FROM l3 WHERE $KEEP
   UNION ALL
-  SELECT $SCOLS, $CELLX, $CELLY FROM stationary)
-  TO '$OUT/L3/day-$day' (FORMAT parquet, PARTITION_BY (cell_x, cell_y), COMPRESSION zstd, OVERWRITE_OR_IGNORE, $TEMPORAL_FOOTER);
+  SELECT $SCOLS, $CELLX, $CELLY$L3SBIN FROM stationary)
+  TO '$OUT/L3/day-$day' (FORMAT parquet, PARTITION_BY ($L3KEYS), COMPRESSION zstd, OVERWRITE_OR_IGNORE, $TEMPORAL_FOOTER);
 HDR
       echo "DROP TABLE l3;"
     fi
