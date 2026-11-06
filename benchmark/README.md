@@ -216,5 +216,11 @@ the answer, L0's answer from `answers.csv`, and whether the two state the same n
 reads in place, and writes `mobilityspark-answers.csv` in the same form.
 
 `STEPS` selects the steps an invocation runs, for instance `STEPS="layouts check"` to rebuild the
-layouts of a run whose L0 exists. `STEPS=cold` adds the timing after dropping the page cache before
+layouts of a run whose L0 exists. `STEPS="ablation check"` adds the ablation layouts
+(`planar/43_ablation_layouts.sh`), which change one factor at a time where the eleven layouts change
+several together: L0r (L0's row order in groups of 2048 rows), L1c to L4c (each partition's daily
+files gathered into one file per month in their row order, in groups of 122,880 rows), L1cr to L4cr
+(the same in groups of 2048 rows) and L2d and L3d (each daily file of L2 and L3 sorted by L0X's
+key); every reading step takes them by name, as `LAYOUTS="L0r L1c"` or `--layouts L0r L1c`.
+`STEPS=cold` adds the timing after dropping the page cache before
 every run, which needs passwordless `sudo tee /proc/sys/vm/drop_caches`.

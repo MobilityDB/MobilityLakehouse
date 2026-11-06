@@ -37,11 +37,12 @@ def layout_files(run, layout):
     """The layout's files, as 70_queries.py reads them"""
     if layout == 'L0':
         return sorted(run.glob('L0/year=*/month=*/day-*.parquet'))
-    if layout in ('L0X', 'L0Z', 'L0H'):
+    if layout in ('L0X', 'L0Z', 'L0H', 'L0r'):
         return sorted(run.glob(f'layouts_daily/{layout}/day-*.parquet'))
-    if layout in ('L1', 'L2', 'L3', 'L4'):
+    if layout in ('L1', 'L2', 'L3', 'L4', 'L2d', 'L3d'):
         return sorted(run.glob(f'layouts_daily/{layout}/day-*/**/*.parquet'))
-    if layout in ('L1s', 'L2s', 'L3s', 'L4s'):
+    if layout in ('L1s', 'L2s', 'L3s', 'L4s',
+                  'L1c', 'L2c', 'L3c', 'L4c', 'L1cr', 'L2cr', 'L3cr', 'L4cr'):
         return sorted(run.glob(f'layout_compact/{layout}/**/*.parquet'))
     sys.exit(f'unknown layout {layout}')
 
@@ -51,7 +52,8 @@ def layout_prefix(layout):
     L1 never matches L1s"""
     if layout == 'L0':
         return 'L0/'
-    if layout in ('L1s', 'L2s', 'L3s', 'L4s'):
+    if layout in ('L1s', 'L2s', 'L3s', 'L4s',
+                  'L1c', 'L2c', 'L3c', 'L4c', 'L1cr', 'L2cr', 'L3cr', 'L4cr'):
         return f'layout_compact/{layout}/'
     return f'layouts_daily/{layout}/'
 

@@ -58,11 +58,12 @@ def layout_glob(run, layout):
     """The layout's files, as 50_query_layouts.sh reads them"""
     if layout == 'L0':
         return f'{run}/L0/year=*/month=*/day-*.parquet'
-    if layout in ('L0X', 'L0Z', 'L0H'):
+    if layout in ('L0X', 'L0Z', 'L0H', 'L0r'):
         return f'{run}/layouts_daily/{layout}/day-*.parquet'
-    if layout in ('L1', 'L2', 'L3', 'L4'):
+    if layout in ('L1', 'L2', 'L3', 'L4', 'L2d', 'L3d'):
         return f'{run}/layouts_daily/{layout}/day-*/**/*.parquet'
-    if layout in ('L1s', 'L2s', 'L3s', 'L4s'):
+    if layout in ('L1s', 'L2s', 'L3s', 'L4s',
+                  'L1c', 'L2c', 'L3c', 'L4c', 'L1cr', 'L2cr', 'L3cr', 'L4cr'):
         return f'{run}/layout_compact/{layout}/**/*.parquet'
     sys.exit(f'unknown layout {layout}')
 

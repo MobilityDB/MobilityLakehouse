@@ -37,6 +37,8 @@
 # checkout built by its tools/refresh-from-master.sh; `layout-figures` another, the stored bounds
 # of the regular and the adaptive tiling over the grid they cut on, and one vessel's day before and
 # after segmentation (planar/79_layout_figures.sh), which needs QGIS and GDAL;
+# `ablation` another, the layouts that change one factor at a time where the eleven change several
+# together (planar/43_ablation_layouts.sh), checked with the eleven when `check` follows it;
 # `cover-figures` another, the paper's two
 # cell-cover figures, the cover of one vessel track and of one protected area at H3 resolutions 8
 # and 9 (planar/77_cover_figures.sh), which needs QGIS, GDAL and MOBILITYDB_PG_PREFIX, a staged
@@ -109,6 +111,9 @@ if want layouts; then
   "$B/planar/40_order_layouts.sh"
   "$B/planar/41_part_layouts.sh"
   "$B/planar/42_compact_layouts.sh"
+fi
+if want ablation; then
+  "$B/planar/43_ablation_layouts.sh"
 fi
 if want check; then
   "$B/planar/92_check_layouts.sh"

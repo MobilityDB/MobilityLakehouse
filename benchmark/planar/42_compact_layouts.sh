@@ -14,10 +14,15 @@
 # daily files of its month: the month's day directories select the files by path, and the filter
 # on the Hive key prunes the other partitions.
 #
+# The same monthly files without the sort are the ablation layouts of 43_ablation_layouts.sh:
+# COMPACT_SORT=0 keeps the daily files' rows in their order, COMPACT_ROW_GROUP sets the row-group
+# size and COMPACT_SUFFIX the layout's name after L1..L4 (c for 122880 rows, cr for 2048).
+#
 #   RUN=data/stage/planar/2026-01-01_2026-02-01 benchmark/planar/42_compact_layouts.sh [L1 L2 L3 L4]
 #
 # Environment: RUN (required); ROOT (the repository's data/), the tree holding log/ and tmp/;
-# DUCKDB; LAYOUT_MEMORY (12GB); LAYOUT_THREADS (4).
+# DUCKDB; LAYOUT_MEMORY (12GB); LAYOUT_THREADS (4); COMPACT_SORT (1); COMPACT_ROW_GROUP (2048);
+# COMPACT_SUFFIX (s).
 set -euo pipefail
 
 ROOT=${ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)/data}
@@ -30,6 +35,9 @@ DUCKDB="$(dirname "${BASH_SOURCE[0]}")/duckdb.sh"
 TEMPORAL_FOOTER=$("$(dirname "${BASH_SOURCE[0]}")/temporal_footer.sh")
 MEM=${LAYOUT_MEMORY:-12GB}
 THREADS=${LAYOUT_THREADS:-4}
+SORT=${COMPACT_SORT:-1}
+ROW_GROUP=${COMPACT_ROW_GROUP:-2048}
+SUFFIX=${COMPACT_SUFFIX:-s}
 GRID="$RUN/grid.txt"
 OUT="$RUN/layout_compact"
 SPILL="$ROOT/tmp/spill.$$.$(date +%s%N)"
@@ -42,6 +50,12 @@ read -r GX0 GX1 GY0 GY1 < "$GRID"
 # The cell of the box centre on the run's grid, as 40_order_layouts.sh computes it for L0X
 CX="least(65535, greatest(0, (((trip_xmin + trip_xmax) / 2 - $GX0) / ($GX1 - $GX0) * 65535.0)::BIGINT))"
 CY="least(65535, greatest(0, (((trip_ymin + trip_ymax) / 2 - $GY0) / ($GY1 - $GY0) * 65535.0)::BIGINT))"
+# Unsorted, the rows keep their daily files' order, the files taken in path order and so by day.
+# That order is stated as a sort on the file and the row within it rather than left to the scan:
+# a scan hands the writer each file's last vector short, and the writer merges short vectors into
+# groups past ROW_GROUP_SIZE (3,209 to 4,084 rows measured at 2048), while a sort hands it full ones.
+ORDER=" ORDER BY filename, file_row_number"
+[ "$SORT" = 0 ] || ORDER=" ORDER BY $CX, $CY, trip_tmin"
 
 # The partition columns of each daily layout (41_part_layouts.sh), comma-separated
 keys() {
@@ -55,7 +69,7 @@ keys() {
 
 for L in ${@:-L1 L2 L3 L4}; do
   k=$(keys "$L")
-  dest="$OUT/${L}s"
+  dest="$OUT/${L}$SUFFIX"
   daily="$RUN/layouts_daily/$L/day-*/**/*.parquet"
   ls "$RUN"/layouts_daily/"$L"/day-*/ >/dev/null 2>&1 || { echo "no daily $L under $RUN" >&2; exit 1; }
   rm -rf "$dest"
@@ -71,7 +85,7 @@ for L in ${@:-L1 L2 L3 L4}; do
     FROM read_parquet('$daily', hive_partitioning = true, filename = true) ORDER BY 1;")
   [ -n "$parts" ] || { echo "$L: no partitions found" >&2; exit 1; }
 
-  script="$RUN/gen/compact-$L.sql"
+  script="$RUN/gen/compact-$L$SUFFIX.sql"
   {
     echo "SET memory_limit = '$MEM';"
     echo "SET threads = $THREADS;"
@@ -82,16 +96,17 @@ for L in ${@:-L1 L2 L3 L4}; do
     echo "SET threads = 1;"
     while IFS='|' read -r month path filter; do
       mkdir -p "$dest/$path"
-      echo "COPY (SELECT * EXCLUDE ($k)"
-      echo "      FROM read_parquet('$RUN/layouts_daily/$L/day-$month-*/**/*.parquet', hive_partitioning = true)"
-      echo "      WHERE $filter ORDER BY $CX, $CY, trip_tmin)"
-      echo "  TO '$dest/$path/month-$month.parquet' (FORMAT parquet, ROW_GROUP_SIZE 2048, COMPRESSION zstd, $TEMPORAL_FOOTER);"
+      echo "COPY (SELECT * EXCLUDE ($k, filename, file_row_number)"
+      echo "      FROM read_parquet('$RUN/layouts_daily/$L/day-$month-*/**/*.parquet', hive_partitioning = true,"
+      echo "                        filename = true, file_row_number = true)"
+      echo "      WHERE $filter$ORDER)"
+      echo "  TO '$dest/$path/month-$month.parquet' (FORMAT parquet, ROW_GROUP_SIZE $ROW_GROUP, COMPRESSION zstd, $TEMPORAL_FOOTER);"
     done <<< "$parts"
   } > "$script"
   t0=$(date +%s)
-  "$DUCKDB" -unsigned -c ".read $script" > "$RUN/gen/compact-$L.log" 2>&1 \
-    || { echo "$L: compaction failed, see $RUN/gen/compact-$L.log" >&2; exit 1; }
-  printf 'COMPACT\t%s\t%ss\t%s files\t%s bytes\n' "${L}s" "$(( $(date +%s) - t0 ))" \
+  "$DUCKDB" -unsigned -c ".read $script" > "$RUN/gen/compact-$L$SUFFIX.log" 2>&1 \
+    || { echo "$L: compaction failed, see $RUN/gen/compact-$L$SUFFIX.log" >&2; exit 1; }
+  printf 'COMPACT\t%s\t%ss\t%s files\t%s bytes\n' "$L$SUFFIX" "$(( $(date +%s) - t0 ))" \
     "$(find "$dest" -name '*.parquet' | wc -l)" "$(du -sb "$dest" | cut -f1)" \
     | tee -a "$ROOT/log/planar-compact.tsv"
 done
