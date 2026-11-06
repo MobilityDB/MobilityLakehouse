@@ -140,8 +140,8 @@ HDR
 CREATE OR REPLACE TEMP TABLE l2 AS
 SELECT m.MMSI, m.ship_type, m.segment_type, m.dt, m.ptmin, m.ptmax, s.tpoint AS p,
   stbox(s.tpoint) AS b,
-  (floor(ST_X(s.spaceBin) / $CELL))::INTEGER AS cell_x,
-  (floor(ST_Y(s.spaceBin) / $CELL))::INTEGER AS cell_y
+  (floor(ST_X(s.point) / $CELL))::INTEGER AS cell_x,
+  (floor(ST_Y(s.point) / $CELL))::INTEGER AS cell_y
 FROM moving m, spaceSplit(m.trip, $CELL, $CELL, $CELL) s
 WHERE s.tpoint IS NOT NULL;
 HDR
@@ -187,10 +187,10 @@ HDR
       marker L4
       cat <<HDR
 CREATE OR REPLACE TEMP TABLE l4 AS
-SELECT m.MMSI, m.ship_type, m.segment_type, m.dt, m.ptmin, m.ptmax, s.tgeompoint AS p,
-  stbox(s.tgeompoint) AS b, (floor(epoch(s.time) / $BINSEC))::BIGINT AS time_bin
+SELECT m.MMSI, m.ship_type, m.segment_type, m.dt, m.ptmin, m.ptmax, s.temp AS p,
+  stbox(s.temp) AS b, (floor(epoch(s.time) / $BINSEC))::BIGINT AS time_bin
 FROM moving m, timeSplit(m.trip, to_seconds($BINSEC)) s
-WHERE s.tgeompoint IS NOT NULL;
+WHERE s.temp IS NOT NULL;
 HDR
       discard L4 l4
       build_only <<HDR
