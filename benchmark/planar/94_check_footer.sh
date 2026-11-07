@@ -11,13 +11,16 @@
 #
 # One file of L0 and one of each layout is read, since a layout's files are written by one COPY.
 #
-# Environment: ROOT (the repository's data/); RUN (the run under ROOT/stage/planar/); DUCKDB_ENGINE.
+# Environment: ROOT (the repository's data/); RUN (the run under ROOT/stage/planar/); DUCKDB.
 set -euo pipefail
 
 P="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT=${ROOT:-$(cd "$P/../.." && pwd)/data}
 RUN=${1:-${RUN:?RUN is required, the run under $ROOT/stage/planar/}}
-D=${DUCKDB_ENGINE:-duckdb}
+# The engine is $DUCKDB when set, else the one engine.path names; every call goes through
+# duckdb.sh, which starts it with the arrow lambda syntax disabled.
+export DUCKDB_ENGINE=${DUCKDB_ENGINE:-${DUCKDB:-}}
+D="$P/duckdb.sh"
 
 status=0
 checked=0
@@ -29,7 +32,7 @@ for dir in "$RUN/L0" "$RUN/layouts_daily"/* "$RUN/layout_compact"/*; do
   # decode(), not a cast: a BLOB cast to VARCHAR renders every quote as \x22 and the document
   # then parses as nothing, which reads exactly like a file that carries no footer at all.
   doc=$("$D" -noheader -list -c "SELECT decode(value) FROM parquet_kv_metadata('$f')
-        WHERE key::VARCHAR = 'temporal'" 2>/dev/null || true)
+        WHERE key::VARCHAR = 'temporal'")
   name=$(basename "$dir")
   if [ -z "$doc" ]; then
     echo "  $name: NO temporal footer  ($f)" >&2
