@@ -25,7 +25,11 @@ in the raw zone is skipped, so an interrupted download resumes where it stopped.
 
 - A DuckDB shell carrying the MobilityDuck extension, built from
   <https://github.com/MobilityDB/MobilityDuck>, named by `DUCKDB_ENGINE` or by a local file
-  `planar/engine.path` holding its path (git ignores it).
+  `planar/engine.path` holding its path (git ignores it). MobilityDuck loads the extensions `icu` and
+  `spatial` when the shell starts, before any statement runs, so they are installed once for the
+  shell's DuckDB version: `benchmark/planar/duckdb.sh -c "INSTALL icu; INSTALL spatial;"`.
+  The catalog extensions `httpfs`, `iceberg` and `ducklake` are installed by the scripts that load
+  them.
 - `bash`, `curl`, `unzip`, `python3` with matplotlib, which draws the figures, and GNU `time` at
   `/usr/bin/time`, which the query harness reads each engine's peak memory from.
 - For the catalogs, Docker Compose, which runs MinIO and the Iceberg REST catalog

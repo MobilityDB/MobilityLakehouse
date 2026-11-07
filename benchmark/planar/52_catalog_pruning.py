@@ -43,7 +43,8 @@ LAYOUTS = ['L0', 'L0X', 'L0Z', 'L0H', 'L1', 'L2', 'L3', 'L4', 'L1s', 'L2s', 'L3s
 COLS = {'flat': ('trip_xmin', 'trip_ymin', 'trip_xmax', 'trip_ymax', 'trip_tmin', 'trip_tmax'),
         'struct': ('trip_bbox.xmin', 'trip_bbox.ymin', 'trip_bbox.xmax', 'trip_bbox.ymax',
                    'trip_tspan.tmin', 'trip_tspan.tmax')}
-SETUP = ["LOAD httpfs;", "LOAD iceberg;", "LOAD ducklake;",
+SETUP = ["INSTALL httpfs;", "LOAD httpfs;", "INSTALL iceberg;", "LOAD iceberg;",
+         "INSTALL ducklake;", "LOAD ducklake;",
          "CREATE SECRET (TYPE s3, KEY_ID 'admin', SECRET 'password', ENDPOINT 'localhost:9000', "
          "URL_STYLE 'path', USE_SSL false, REGION 'us-east-1');",
          "ATTACH 'warehouse' AS ice (TYPE iceberg, ENDPOINT 'http://localhost:8181', "
