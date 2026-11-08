@@ -173,6 +173,12 @@ def run_engine(script):
         peak = int(m.group(1))
     err = ' '.join(l for l in proc.stderr.splitlines()
                    if 'Error' in l or 'error' in l)[:300]
+    if proc.returncode != 0 and not err:
+        # An engine that stops without an error line (duckdb.sh finding no engine, a kill by a
+        # signal, which /usr/bin/time reports) still records why, as duck() of
+        # 52_catalog_pruning.py does
+        err = ' '.join([f'exit {proc.returncode}:'] +
+                       [l for l in proc.stderr.splitlines() if not l.startswith('@@PEAKKB')])[:300]
     runs, cur = {}, None
     for line in proc.stdout.splitlines():
         if line.startswith('@@RUN '):
