@@ -136,12 +136,12 @@ def trips_source(kind, run, layout, namespace):
     if kind == 'lake':
         return [f"CREATE OR REPLACE VIEW trips AS SELECT * FROM read_parquet('{layout_glob(run, layout)}');"]
     if kind == 'ducklake':
-        return ['LOAD httpfs;', 'LOAD ducklake;',
+        return ['INSTALL httpfs;', 'LOAD httpfs;', 'INSTALL ducklake;', 'LOAD ducklake;',
                 "CREATE SECRET (TYPE s3, KEY_ID 'admin', SECRET 'password', ENDPOINT 'localhost:9000', "
                 "URL_STYLE 'path', USE_SSL false, REGION 'us-east-1');",
                 f"ATTACH 'ducklake:{ROOT}/lakehouse-store/ducklake/{namespace}.ducklake' AS dl (READ_ONLY);",
                 f'CREATE OR REPLACE VIEW trips AS SELECT * FROM dl.{layout.lower()};']
-    return ['LOAD httpfs;', 'LOAD iceberg;',
+    return ['INSTALL httpfs;', 'LOAD httpfs;', 'INSTALL iceberg;', 'LOAD iceberg;',
             "CREATE SECRET (TYPE s3, KEY_ID 'admin', SECRET 'password', ENDPOINT 'localhost:9000', "
             "URL_STYLE 'path', USE_SSL false, REGION 'us-east-1');",
             "ATTACH 'warehouse' AS ice (TYPE iceberg, ENDPOINT 'http://localhost:8181', "

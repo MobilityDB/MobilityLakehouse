@@ -25,7 +25,7 @@ THREADS=${DUCKLAKE_THREADS:-4}
 META="$ROOT/lakehouse-store/ducklake/$NS.ducklake"
 mkdir -p "$(dirname "$META")" "$RUN/gen" "$ROOT/log"
 
-SETUP="LOAD httpfs; LOAD ducklake;
+SETUP="INSTALL httpfs; LOAD httpfs; INSTALL ducklake; LOAD ducklake;
 CREATE SECRET (TYPE s3, KEY_ID 'admin', SECRET 'password', ENDPOINT 'localhost:9000', URL_STYLE 'path', USE_SSL false, REGION 'us-east-1');
 ATTACH 'ducklake:$META' AS dl (DATA_PATH 's3://warehouse/ducklake/$NS/');"
 
