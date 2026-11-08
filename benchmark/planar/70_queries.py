@@ -3,7 +3,10 @@
 
 For each (layout, window, query) the query runs ITER times and each run records its answer, its
 wall time as DuckDB's timer reports it (summed over the statements of the run: a belt query is its
-prune into `mt` plus the query on it), and the engine's peak resident memory.
+prune into `mt` plus the query on it), and the engine's peak resident memory. The layouts are the
+innermost loop: every layout answers a (window, query) before the next one starts, so a drift of
+the machine's speed over a campaign of hours reaches the layouts of a cell alike and the ratios
+between them hold.
 
   warm  one engine per (layout, window, query): the query runs once untimed, which touches the
         files, then ITER timed runs in the same engine.
@@ -222,11 +225,13 @@ def main():
         for layout in a.layouts:
             if a.source == 'lake' and not glob.glob(layout_glob(run, layout), recursive=True):
                 sys.exit(f'{layout}: no files match {layout_glob(run, layout)}')
-            source = trips_source(a.source, run, layout, a.namespace)
-            for window in a.windows:
-                t0, t1 = windows[window]
-                for q in a.queries:
-                    stmts = statements(q, regions, t0, t1, a.bounds)
+        sources = {l: trips_source(a.source, run, l, a.namespace) for l in a.layouts}
+        for window in a.windows:
+            t0, t1 = windows[window]
+            for q in a.queries:
+                stmts = statements(q, regions, t0, t1, a.bounds)
+                for layout in a.layouts:
+                    source = sources[layout]
                     script = gen / f'query-{a.source}-{a.bounds}-{layout}-{window}-{q}.sql'
                     started = dt.datetime.now().isoformat(timespec='seconds')
                     load1 = os.getloadavg()[0]
