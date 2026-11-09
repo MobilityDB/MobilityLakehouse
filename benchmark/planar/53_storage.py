@@ -5,7 +5,10 @@ Rows are read from the Parquet footers (the sum of each file's row-group row cou
 the files' sizes on disk, and replication is a layout's rows over L0's: a layout that never cuts a
 trajectory reads 1.00, and a tiling layout reads how many pieces it stores per L0 segment.
 
-  RUN=<run> python3 planar/53_storage.py > storage.csv
+  RUN=<run> python3 planar/53_storage.py [L0 L0r L1c ...] > storage.csv
+
+The layouts are the twelve unless named; L0 is always measured, since replication is read against
+it.
 
 Environment: RUN (required); DUCKDB_ENGINE.
 """
@@ -46,8 +49,9 @@ def rows(files):
 
 def main():
     run = Path(os.environ.get('RUN') or sys.exit('RUN is required'))
+    layouts = sys.argv[1:] or LAYOUTS
     stats = {}
-    for layout in LAYOUTS:
+    for layout in ['L0'] + [l for l in layouts if l != 'L0']:
         files = layout_files(run, layout)
         if files:
             stats[layout] = (len(files), rows(files), sum(f.stat().st_size for f in files))
