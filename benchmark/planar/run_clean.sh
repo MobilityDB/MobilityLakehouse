@@ -11,7 +11,9 @@
 #   LO=2026-01-20 HI=2026-01-22 ./run_clean.sh
 #
 # Environment: LO, HI (required); ROOT (the repository's data/), the tree holding raw/ (the raw
-# zone raw_zone.sh writes), stage/, log/ and tmp/; NBUCKETS (16); OUT; DUCKDB; MEM (12GB); STAGES
+# zone raw_zone.sh writes), stage/, log/ and tmp/; NBUCKETS (16); OUT; DUCKDB; MEM (12GB);
+# SPEED_KN (100), GAP_S (600), STOP_KN (0.2) and MOVE_KN (0.5), the cleaning's speed bound, the
+# silence that ends a piece and the hysteresis of the stops (20_clean.sql); STAGES
 # ("1 2 3"), the stages this invocation runs, each reading what the stage before it wrote. The SQL
 # files and duckdb.sh are read from the directory holding this script.
 set -euo pipefail
@@ -29,6 +31,10 @@ OUT=${OUT:-$ROOT/stage/planar/${LO}_${HI}}
 export DUCKDB_ENGINE=${DUCKDB_ENGINE:-${DUCKDB:-}}
 DUCKDB="$P/duckdb.sh"
 MEM=${MEM:-12GB}
+SPEED_KN=${SPEED_KN:-100}
+GAP_S=${GAP_S:-600}
+STOP_KN=${STOP_KN:-0.2}
+MOVE_KN=${MOVE_KN:-0.5}
 STAGES=${STAGES:-"1 2 3"}
 
 want() { case " $STAGES " in *" $1 "*) return 0;; *) return 1;; esac; }
@@ -77,6 +83,10 @@ if want 2; then
     {
       settings
       echo "SET VARIABLE bucket_glob = '$OUT/buckets/bucket=$b/*.parquet';"
+      echo "SET VARIABLE speed_kn = $SPEED_KN;"
+      echo "SET VARIABLE gap_s = $GAP_S;"
+      echo "SET VARIABLE stop_kn = $STOP_KN;"
+      echo "SET VARIABLE move_kn = $MOVE_KN;"
       echo ".read $P/20_clean.sql"
       echo ".read $P/25_segments.sql"
       printf "COPY clean TO '%s' (FORMAT parquet);\n" "$OUT/clean/bucket-$b.parquet"
@@ -93,7 +103,7 @@ if want 2; then
 fi
 
 # Stage 3: one L0 file per calendar day of [LO, HI), checked from the written file by the shell,
-# since an in-SQL guard cannot fail a DuckDB run: no moving row over 100 kn, no row crossing
+# since an in-SQL guard cannot fail a DuckDB run: no moving row over SPEED_KN, no row crossing
 # midnight, every row in EPSG:25832.
 if want 3; then
   day="$LO"
@@ -115,7 +125,7 @@ if want 3; then
                                 AND epoch(trip_tspan.tmax) > epoch(trip_tspan.tmin)
                                 AND length(tgeompointFromEWKB(trip))
                                     / (epoch(trip_tspan.tmax) - epoch(trip_tspan.tmin))
-                                    * 1.9438444924406 > 100)
+                                    * 1.9438444924406 > $SPEED_KN)
            + count(*) FILTER (WHERE trip_tspan.tmin < dt::TIMESTAMP
                                 OR trip_tspan.tmax > dt::TIMESTAMP + INTERVAL 1 DAY)
            + count(*) FILTER (WHERE srid <> 25832)
