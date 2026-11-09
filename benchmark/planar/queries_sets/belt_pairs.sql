@@ -1,0 +1,1 @@
+../queries/belt_pairs.sql

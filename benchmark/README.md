@@ -143,6 +143,9 @@ L1 to L4) and `layout_compact/` (L1s to L4s). The results land in
   window admits, and the queries timed on the three, GP answering the point forms of
   `planar/queries_points/` (`planar/48_points.sh`); Query 7, a position interpolated at an
   instant, has no point form;
+- `answer-sets.csv`, from the `answer-sets` step, per layout, window and query, the vessels, pairs
+  and values the layout returns against L0's, and the same for L0 against the segments before the
+  midnight cut (`planar/56_answer_sets.py`);
 - `figures/`, the evaluation figures: the share of its bytes each layout reads, the speedup of
   each query and layout over L0, the trade-off of speedup against bytes read, and the files a
   query reads and the speedup it gains through each catalog; and, from the `cover-figures` step,
