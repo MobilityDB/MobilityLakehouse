@@ -14,7 +14,9 @@ between them hold.
 
 The query text is queries/*.sql beside this script, the listings of the paper with its `:name`
 parameters, bound here by substitution; the regions and windows are windows_25832.csv
-(45_windows.sql). The source `lake` reads the layout's Parquet files directly with read_parquet;
+(45_windows.sql). The layout GP is the point table of 48_points.sh, which answers the queries of
+queries_points/ beside this script, the same intents over one row per position; Query 7, a
+position interpolated at an instant, has no point form and is not run on it. The source `lake` reads the layout's Parquet files directly with read_parquet;
 `iceberg` reads the table <namespace>.<layout> through the REST catalog 80_register.py registers
 the layouts in; `ducklake` reads it through the DuckLake catalog of 81_register_ducklake.sh.
 `--bounds flat` (the default) filters on the top-level copies trip_xmin .. trip_tmax, which a
@@ -41,6 +43,7 @@ from pathlib import Path
 
 ROOT = Path(os.environ.get('ROOT') or Path(__file__).resolve().parents[2] / 'data')
 QDIR = Path(__file__).resolve().with_name('queries')
+QDIR_POINTS = Path(__file__).resolve().with_name('queries_points')
 WINDOWS = Path(os.environ.get('QUERY_WINDOWS') or Path(__file__).resolve().with_name('windows_25832.csv'))
 # The engine is $DUCKDB when set, else the one engine.path names; every call goes through
 # duckdb.sh, which starts it with the arrow lambda syntax disabled.
@@ -62,6 +65,8 @@ def layout_glob(run, layout):
     """The layout's files, as 50_query_layouts.sh reads them"""
     if layout == 'L0':
         return f'{run}/L0/year=*/month=*/day-*.parquet'
+    if layout == 'GP':
+        return f'{run}/points/day-*.parquet'
     if layout in ('L0X', 'L0Z', 'L0H', 'L0r'):
         return f'{run}/layouts_daily/{layout}/day-*.parquet'
     if layout in ('L1', 'L2', 'L3', 'L4', 'L2d', 'L3d'):
@@ -106,7 +111,7 @@ def covering(text, bounds):
     return text
 
 
-def statements(query, regions, t0, t1, bounds):
+def statements(query, regions, t0, t1, bounds, qdir=QDIR):
     """The statements one run of the query executes, bound"""
     region, gate = QUERIES[query]
     ts = lambda t: t.strftime('%Y-%m-%d %H:%M:%S')
@@ -125,7 +130,7 @@ def statements(query, regions, t0, t1, bounds):
     else:
         x0, y0, x1, y1 = regions[region]
         p.update({'rxmin': x0, 'rymin': y0, 'rxmax': x1, 'rymax': y1})
-    read = lambda n: covering((QDIR / n).read_text(), bounds)
+    read = lambda n: covering((qdir / n).read_text(), bounds)
     if region != 'belt':
         return [bind(read(query + '.sql'), p)]
     body = read('belt_clipped.sql')
@@ -236,19 +241,24 @@ def main():
         for window in a.windows:
             t0, t1 = windows[window]
             for q in a.queries:
-                stmts = statements(q, regions, t0, t1, a.bounds)
+                stmts = {}
                 for layout in a.layouts:
+                    qdir = QDIR_POINTS if layout == 'GP' else QDIR
+                    if not (qdir / f'{q}.sql').exists():
+                        continue
+                    if qdir not in stmts:
+                        stmts[qdir] = statements(q, regions, t0, t1, a.bounds, qdir)
                     source = sources[layout]
                     script = gen / f'query-{a.source}-{a.bounds}-{layout}-{window}-{q}.sql'
                     started = dt.datetime.now().isoformat(timespec='seconds')
                     load1 = os.getloadavg()[0]
                     if a.mode == 'warm':
-                        engine_script(script, source, spill, range(a.iter + 1), stmts)
+                        engine_script(script, source, spill, range(a.iter + 1), stmts[qdir])
                         runs, peak, err = run_engine(script)
                         rows = [(k, runs.get(k, (None, ''))) for k in range(1, a.iter + 1)]
                         rows = [(k, s, ans, peak, err) for k, (s, ans) in rows]
                     else:
-                        engine_script(script, source, spill, [1], stmts)
+                        engine_script(script, source, spill, [1], stmts[qdir])
                         rows = []
                         for k in range(1, a.iter + 1):
                             drop_caches(run)

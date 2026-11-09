@@ -46,6 +46,10 @@
 # regions drawn at random in three classes of traffic density and over anchors drawn at random in
 # the month and, when YEAR_RUN names a run of a year, in four seasons of it, three warm runs each at
 # the hour, day and week windows (planar/47_diversity_windows.py, 70_queries.py);
+# `points` another, the point baseline GP, one row per position of L0 as GeoParquet with its
+# bounding-box covering (planar/48_points.sh), its storage and what each window lets it skip beside
+# L0's and L3s's, and the ten queries timed on the three, as the timing step times them, over the
+# point forms of queries_points/ on GP;
 # `cover-figures` another, the paper's two
 # cell-cover figures, the cover of one vessel track and of one protected area at H3 resolutions 8
 # and 9 (planar/77_cover_figures.sh), which needs QGIS, GDAL and MOBILITYDB_PG_PREFIX, a staged
@@ -270,5 +274,17 @@ if want diversity; then
   done
   python3 "$B/planar/47_diversity_windows.py" merge "$D" > "$OUT/diversity.csv"
   python3 "$B/planar/71_summarize.py" "$OUT/diversity.csv" --speedups > "$OUT/diversity-speedups.csv"
+fi
+if want points; then
+  mkdir -p "$OUT"
+  "$B/planar/48_points.sh"
+  python3 "$B/planar/53_storage.py" GP L3s > "$OUT/points-storage.csv"
+  rm -f "$OUT/points-pruning.csv"
+  LAYOUTS="L0 L3s GP" LAYOUT_PRUNING_OUT="$OUT/points-pruning.csv" "$B/planar/50_query_layouts.sh" > /dev/null
+  rm -f "$OUT/query-runtime-points.csv"
+  QUERY_OUT="$OUT/query-runtime-points.csv" python3 "$B/planar/70_queries.py" --mode warm \
+    --layouts L0 L3s GP
+  python3 "$B/planar/71_summarize.py" "$OUT/query-runtime-points.csv" \
+    > "$OUT/query-runtime-points-summary.csv"
 fi
 echo ">> $FROM..$TO done, run $RUN, results $OUT"

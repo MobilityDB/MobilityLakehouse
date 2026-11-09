@@ -138,6 +138,11 @@ L1 to L4) and `layout_compact/` (L1s to L4s). The results land in
   queries over the random regions and anchors of `diversity/conditions.csv`, each window named
   `<condition>/<window>`, and each layout's speedup over L0 per condition
   (`planar/47_diversity_windows.py`);
+- `points-storage.csv`, `points-pruning.csv`, `query-runtime-points.csv` and its summary, from the
+  `points` step, the point baseline GP beside L0 and L3s: its storage, the row groups and bytes each
+  window admits, and the queries timed on the three, GP answering the point forms of
+  `planar/queries_points/` (`planar/48_points.sh`); Query 7, a position interpolated at an
+  instant, has no point form;
 - `figures/`, the evaluation figures: the share of its bytes each layout reads, the speedup of
   each query and layout over L0, the trade-off of speedup against bytes read, and the files a
   query reads and the speedup it gains through each catalog; and, from the `cover-figures` step,

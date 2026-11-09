@@ -35,6 +35,7 @@ trap 'rm -rf "$SPILL"' EXIT
 layout_glob() {
   case "$1" in
     L0)          echo "$RUN/L0/year=*/month=*/day-*.parquet" ;;
+    GP)          echo "$RUN/points/day-*.parquet" ;;
     L0X|L0Z|L0H|L0r) echo "$RUN/layouts_daily/$1/day-*.parquet" ;;
     L1|L2|L3|L4|L2d|L3d) echo "$RUN/layouts_daily/$1/day-*/**/*.parquet" ;;
     L1s|L2s|L3s|L4s|L[1-4]c|L[1-4]cr) echo "$RUN/layout_compact/$1/**/*.parquet" ;;
@@ -46,17 +47,25 @@ layout_glob() {
 
 for L in $LAYOUTS; do
   glob=$(layout_glob "$L")
+  # The point table of 48_points.sh states each row group's box in its GeoParquet covering and its
+  # period in the instant t; every layout states them in trip_bbox and trip_tspan.
+  if [ "$L" = GP ]; then
+    BX0='bbox, xmin'; BX1='bbox, xmax'; BY0='bbox, ymin'; BY1='bbox, ymax'; BT0='t'; BT1='t'
+  else
+    BX0='trip_bbox, xmin'; BX1='trip_bbox, xmax'; BY0='trip_bbox, ymin'; BY1='trip_bbox, ymax'
+    BT0='trip_tspan, tmin'; BT1='trip_tspan, tmax'
+  fi
   "$DUCKDB" -unsigned -noheader -list -c "
 SET temp_directory = '$SPILL';
 CREATE OR REPLACE TEMP TABLE rg AS
 SELECT file_name, row_group_id,
   any_value(row_group_num_rows) AS nrows, any_value(row_group_bytes) AS nbytes,
-  min(CASE WHEN path_in_schema = 'trip_bbox, xmin' THEN stats_min::DOUBLE END) AS bx0,
-  max(CASE WHEN path_in_schema = 'trip_bbox, xmax' THEN stats_max::DOUBLE END) AS bx1,
-  min(CASE WHEN path_in_schema = 'trip_bbox, ymin' THEN stats_min::DOUBLE END) AS by0,
-  max(CASE WHEN path_in_schema = 'trip_bbox, ymax' THEN stats_max::DOUBLE END) AS by1,
-  min(CASE WHEN path_in_schema = 'trip_tspan, tmin' THEN stats_min::TIMESTAMP END) AS bt0,
-  max(CASE WHEN path_in_schema = 'trip_tspan, tmax' THEN stats_max::TIMESTAMP END) AS bt1
+  min(CASE WHEN path_in_schema = '$BX0' THEN stats_min::DOUBLE END) AS bx0,
+  max(CASE WHEN path_in_schema = '$BX1' THEN stats_max::DOUBLE END) AS bx1,
+  min(CASE WHEN path_in_schema = '$BY0' THEN stats_min::DOUBLE END) AS by0,
+  max(CASE WHEN path_in_schema = '$BY1' THEN stats_max::DOUBLE END) AS by1,
+  min(CASE WHEN path_in_schema = '$BT0' THEN stats_min::TIMESTAMP END) AS bt0,
+  max(CASE WHEN path_in_schema = '$BT1' THEN stats_max::TIMESTAMP END) AS bt1
 FROM parquet_metadata('$glob')
 GROUP BY file_name, row_group_id;
 CREATE OR REPLACE TEMP TABLE win AS
