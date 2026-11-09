@@ -42,6 +42,10 @@
 # together (planar/43_ablation_layouts.sh), checked with the eleven when `check` follows it;
 # `sensitivity-layouts` another, the spatial layouts rebuilt with one fixed parameter changed, each
 # variant a run of its own under the run's sensitivity/ (planar/44_sensitivity_layouts.sh);
+# `diversity` another, the region queries rerun on DIVERSITY_LAYOUTS ("L0 L1s L2s L3s") over
+# regions drawn at random in three classes of traffic density and over anchors drawn at random in
+# the month and, when YEAR_RUN names a run of a year, in four seasons of it, three warm runs each at
+# the hour, day and week windows (planar/47_diversity_windows.py, 70_queries.py);
 # `cover-figures` another, the paper's two
 # cell-cover figures, the cover of one vessel track and of one protected area at H3 resolutions 8
 # and 9 (planar/77_cover_figures.sh), which needs QGIS, GDAL and MOBILITYDB_PG_PREFIX, a staged
@@ -255,5 +259,16 @@ if want cold; then
     > "$OUT/query-runtime-cold-summary.csv"
   python3 "$B/planar/71_summarize.py" "$OUT/query-runtime-cold.csv" --speedups \
     > "$OUT/query-speedups-cold.csv"
+fi
+if want diversity; then
+  D="$OUT/diversity"; rm -rf "$D"; mkdir -p "$D/runs"
+  python3 "$B/planar/47_diversity_windows.py" draw "$D" ${YEAR_RUN:+--year-run "$YEAR_RUN"}
+  tail -n +2 "$D/conditions.csv" | while IFS=, read -r cond cls crun rest; do
+    RUN=$crun QUERY_WINDOWS="$D/$cond.csv" QUERY_OUT="$D/runs/$cond.csv" \
+      python3 "$B/planar/70_queries.py" --mode warm --iter 3 --windows 1h 1day 1week \
+      --layouts ${DIVERSITY_LAYOUTS:-L0 L1s L2s L3s} < /dev/null
+  done
+  python3 "$B/planar/47_diversity_windows.py" merge "$D" > "$OUT/diversity.csv"
+  python3 "$B/planar/71_summarize.py" "$OUT/diversity.csv" --speedups > "$OUT/diversity-speedups.csv"
 fi
 echo ">> $FROM..$TO done, run $RUN, results $OUT"

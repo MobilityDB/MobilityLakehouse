@@ -134,6 +134,10 @@ L1 to L4) and `layout_compact/` (L1s to L4s). The results land in
   for the queries read through the Iceberg catalog and through DuckLake, and
   `query-runtime-iceberg-speedups.csv` and `query-runtime-ducklake-speedups.csv`, each layout's
   speedup through the catalog over the same layout's files;
+- `diversity.csv` and `diversity-speedups.csv`, from the `diversity` step, the runs of the region
+  queries over the random regions and anchors of `diversity/conditions.csv`, each window named
+  `<condition>/<window>`, and each layout's speedup over L0 per condition
+  (`planar/47_diversity_windows.py`);
 - `figures/`, the evaluation figures: the share of its bytes each layout reads, the speedup of
   each query and layout over L0, the trade-off of speedup against bytes read, and the files a
   query reads and the speedup it gains through each catalog; and, from the `cover-figures` step,
