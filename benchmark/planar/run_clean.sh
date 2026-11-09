@@ -14,8 +14,10 @@
 # zone raw_zone.sh writes), stage/, log/ and tmp/; NBUCKETS (16); OUT; DUCKDB; MEM (12GB);
 # SPEED_KN (100), GAP_S (600), STOP_KN (0.2) and MOVE_KN (0.5), the cleaning's speed bound, the
 # silence that ends a piece and the hysteresis of the stops (20_clean.sql); STAGES
-# ("1 2 3"), the stages this invocation runs, each reading what the stage before it wrote. The SQL
-# files and duckdb.sh are read from the directory holding this script.
+# ("1 2 3"), the stages this invocation runs, each reading what the stage before it wrote, and
+# `audit` a further one, what each cleaning rule removes (26_cleaning_audit.sql) written to
+# audit-stages.csv and audit-removed.csv in OUT once stages 1 and 2 have run. The SQL files and
+# duckdb.sh are read from the directory holding this script.
 set -euo pipefail
 
 P="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -146,4 +148,22 @@ if want 3; then
       "$(stat -c %s "$dest/day-$day.parquet")" | tee -a "$LOG"
     day=$(date -d "$day + 1 day" +%F)
   done
+fi
+
+# The audit: the reports and vessels each rule keeps, and the vessels it removes.
+if want audit; then
+  {
+    settings
+    echo "SET VARIABLE raw_glob = '$ROOT/raw/aisdk-*.parquet';"
+    echo "SET VARIABLE lo = '$LO';"
+    echo "SET VARIABLE hi = '$HI';"
+    echo "SET VARIABLE mid_csv = '$P/itu_mid.csv';"
+    echo "SET VARIABLE out = '$OUT';"
+    echo ".read $P/26_cleaning_audit.sql"
+    printf "COPY audit_stage TO '%s' (FORMAT csv, HEADER);\n" "$OUT/audit-stages.csv"
+    printf "COPY audit_removed TO '%s' (FORMAT csv, HEADER);\n" "$OUT/audit-removed.csv"
+  } > "$OUT/gen/audit.sql"
+  t0=$(date +%s)
+  "$DUCKDB" -unsigned -c ".read $OUT/gen/audit.sql" > "$OUT/gen/audit.log" 2>&1
+  printf 'audit\t%s\t%s\t%ss\n' "$LO" "$HI" "$(( $(date +%s) - t0 ))" | tee -a "$LOG"
 fi
