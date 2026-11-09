@@ -50,6 +50,9 @@
 # bounding-box covering (planar/48_points.sh), its storage and what each window lets it skip beside
 # L0's and L3s's, and the ten queries timed on the three, as the timing step times them, over the
 # point forms of queries_points/ on GP;
+# `answer-sets` another, what every layout returns for each query against L0 before it is reduced
+# to a number, the sets and the values, and L0 against the segments before the midnight cut
+# (planar/56_answer_sets.py), which needs the run's segments/;
 # `cover-figures` another, the paper's two
 # cell-cover figures, the cover of one vessel track and of one protected area at H3 resolutions 8
 # and 9 (planar/77_cover_figures.sh), which needs QGIS, GDAL and MOBILITYDB_PG_PREFIX, a staged
@@ -286,5 +289,9 @@ if want points; then
     --layouts L0 L3s GP
   python3 "$B/planar/71_summarize.py" "$OUT/query-runtime-points.csv" \
     > "$OUT/query-runtime-points-summary.csv"
+fi
+if want answer-sets; then
+  mkdir -p "$OUT"
+  python3 "$B/planar/56_answer_sets.py" --layouts ${LAYOUTS#L0 } uncut > "$OUT/answer-sets.csv"
 fi
 echo ">> $FROM..$TO done, run $RUN, results $OUT"
