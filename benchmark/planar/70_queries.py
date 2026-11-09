@@ -24,7 +24,14 @@ catalog prunes files on; `--bounds struct` filters on trip_bbox / trip_tspan, wh
 pruning reads.
 
   RUN=data/stage/planar/2026-01-01_2026-02-01 benchmark/planar/70_queries.py --mode warm \
-      [--layouts L0 L0X ...] [--windows 1h 1day ...] [--queries q01 q02 ...] [--iter 10]
+      [--layouts L0 L0X ...] [--windows 1h 1day ...] [--queries q01 q02 ...] [--iter 10] \
+      [--limit SECONDS]
+
+--limit stops an engine that runs longer than SECONDS: warm, the one engine of a (layout, window,
+query), its untimed first run included; cold, the engine of each run. The runs it finished keep
+their times and answers, and every run it did not finish is recorded without a time and with the
+error `stopped at the limit of SECONDS s`, so a query too slow to time to the end is reported as
+taking longer than the limit.
 
 Environment: RUN (required); ROOT (the repository's data/), the tree holding results/, tmp/ and
 the DuckLake store; DUCKDB; QUERY_MEMORY (12GB); QUERY_OUT; QUERY_WINDOWS, the windows file read
@@ -36,6 +43,7 @@ import datetime as dt
 import glob
 import os
 import re
+import signal
 import subprocess
 import sys
 import time
@@ -169,24 +177,37 @@ def engine_script(path, source, spill, runs, stmts):
     path.write_text('\n'.join(lines) + '\n')
 
 
-def run_engine(script):
-    """Run one engine; return ({run: (seconds, answer)}, peak_kb, error)"""
-    proc = subprocess.run(['/usr/bin/time', '-f', '@@PEAKKB %M', DUCKDB, '-unsigned',
-                           '-c', f'.read {script}'], capture_output=True, text=True)
+def run_engine(script, limit=None):
+    """Run one engine, stopped after `limit` seconds when one is given; return
+    ({run: (seconds, answer)}, peak_kb, error)"""
+    # The engine runs in a session of its own, so that stopping it at the limit stops duckdb.sh
+    # and the engine it starts, not /usr/bin/time alone
+    proc = subprocess.Popen(['/usr/bin/time', '-f', '@@PEAKKB %M', DUCKDB, '-unsigned',
+                             '-c', f'.read {script}'], stdout=subprocess.PIPE,
+                            stderr=subprocess.PIPE, text=True, start_new_session=True)
+    try:
+        stdout, stderr = proc.communicate(timeout=limit)
+        stopped = False
+    except subprocess.TimeoutExpired:
+        os.killpg(proc.pid, signal.SIGKILL)
+        stdout, stderr = proc.communicate()
+        stopped = True
     peak = None
-    m = re.search(r'@@PEAKKB (\d+)', proc.stderr)
+    m = re.search(r'@@PEAKKB (\d+)', stderr)
     if m:
         peak = int(m.group(1))
-    err = ' '.join(l for l in proc.stderr.splitlines()
+    err = ' '.join(l for l in stderr.splitlines()
                    if 'Error' in l or 'error' in l)[:300]
-    if proc.returncode != 0 and not err:
+    if stopped:
+        err = f'stopped at the limit of {limit:g} s'
+    elif proc.returncode != 0 and not err:
         # An engine that stops without an error line (duckdb.sh finding no engine, a kill by a
         # signal, which /usr/bin/time reports) still records why, as duck() of
         # 52_catalog_pruning.py does
         err = ' '.join([f'exit {proc.returncode}:'] +
-                       [l for l in proc.stderr.splitlines() if not l.startswith('@@PEAKKB')])[:300]
+                       [l for l in stderr.splitlines() if not l.startswith('@@PEAKKB')])[:300]
     runs, cur = {}, None
-    for line in proc.stdout.splitlines():
+    for line in stdout.splitlines():
         if line.startswith('@@RUN '):
             cur = int(line.split()[1])
             runs[cur] = [0.0, '']
@@ -196,6 +217,9 @@ def run_engine(script):
             runs[cur][0] += float(line.split()[4])
         elif line.strip():
             runs[cur][1] = line.strip()
+    if stopped and cur is not None:
+        # the run the limit interrupted has neither its whole time nor its answer
+        del runs[cur]
     return {k: tuple(v) for k, v in runs.items()}, peak, err
 
 
@@ -217,6 +241,7 @@ def main():
     ap.add_argument('--source', choices=('lake', 'iceberg', 'ducklake'), default='lake')
     ap.add_argument('--namespace', default='trips')
     ap.add_argument('--bounds', choices=('flat', 'struct'), default='flat')
+    ap.add_argument('--limit', type=float, default=None)
     a = ap.parse_args()
 
     run = Path(os.environ.get('RUN') or sys.exit('RUN is required'))
@@ -254,7 +279,7 @@ def main():
                     load1 = os.getloadavg()[0]
                     if a.mode == 'warm':
                         engine_script(script, source, spill, range(a.iter + 1), stmts[qdir])
-                        runs, peak, err = run_engine(script)
+                        runs, peak, err = run_engine(script, a.limit)
                         rows = [(k, runs.get(k, (None, ''))) for k in range(1, a.iter + 1)]
                         rows = [(k, s, ans, peak, err) for k, (s, ans) in rows]
                     else:
@@ -262,7 +287,7 @@ def main():
                         rows = []
                         for k in range(1, a.iter + 1):
                             drop_caches(run)
-                            runs, peak, err = run_engine(script)
+                            runs, peak, err = run_engine(script, a.limit)
                             s, ans = runs.get(1, (None, ''))
                             rows.append((k, s, ans, peak, err))
                     for k, s, ans, peak, err in rows:
