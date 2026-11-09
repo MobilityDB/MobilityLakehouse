@@ -25,7 +25,8 @@ pruning reads.
       [--layouts L0 L0X ...] [--windows 1h 1day ...] [--queries q01 q02 ...] [--iter 10]
 
 Environment: RUN (required); ROOT (the repository's data/), the tree holding results/, tmp/ and
-the DuckLake store; DUCKDB; QUERY_MEMORY (12GB); QUERY_OUT.
+the DuckLake store; DUCKDB; QUERY_MEMORY (12GB); QUERY_OUT; QUERY_WINDOWS, the windows file read
+in place of windows_25832.csv (47_diversity_windows.py writes them).
 """
 import argparse
 import csv
@@ -40,7 +41,7 @@ from pathlib import Path
 
 ROOT = Path(os.environ.get('ROOT') or Path(__file__).resolve().parents[2] / 'data')
 QDIR = Path(__file__).resolve().with_name('queries')
-WINDOWS = Path(__file__).resolve().with_name('windows_25832.csv')
+WINDOWS = Path(os.environ.get('QUERY_WINDOWS') or Path(__file__).resolve().with_name('windows_25832.csv'))
 # The engine is $DUCKDB when set, else the one engine.path names; every call goes through
 # duckdb.sh, which starts it with the arrow lambda syntax disabled.
 os.environ['DUCKDB_ENGINE'] = os.environ.get('DUCKDB_ENGINE') or os.environ.get('DUCKDB') or ''
