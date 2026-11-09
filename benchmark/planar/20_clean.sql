@@ -2,21 +2,24 @@
 -- in EPSG:25832, under these rules:
 --   dedup    one report per vessel and instant, ties broken by (lat, lon, ship_type, sog, nav), a
 --            total order on the columns kept, so a rebuild keeps the same report;
---   walk     a report is kept when the last accepted one could reach it at 100 kn; the seed is
+--   walk     a report is kept when the last accepted one could reach it at speed_kn (100 kn); the
+--            seed is
 --            the earliest of the first eleven reports a majority of them can reach, reports
 --            before it are walked backwards from it, and a vessel whose share of reports
 --            unreachable from the report before exceeds one half is dropped whole;
---   pieces   a new piece after a silence over 600 s;
+--   pieces   a new piece after a silence over gap_s (600 s);
 --   speed    the window-centroid speed of the positions over [t, t + 600 s] (the backward frame
 --            where the forward one spans under 300 s), the reported SOG where neither does;
---   stops    a vessel becomes stopped at <= 0.2 kn and moving again at >= 0.5 kn, keeping its
+--   stops    a vessel becomes stopped at <= stop_kn (0.2 kn) and moving again at >= move_kn
+--            (0.5 kn), keeping its
 --            state in between; a stopped run lasting at least 300 s is a stop.
 -- The tables `clean` and `stop_run` hold the result; run_clean.sh writes them out.
 --
--- Variables: bucket_glob.
+-- Variables: bucket_glob; speed_kn, gap_s, stop_kn and move_kn, the thresholds above, which
+-- run_clean.sh sets.
 
--- A report is reachable from another when the straight line between them needs at most 100 kn.
-CREATE OR REPLACE TEMP MACRO reach(d, dt) AS d <= 100 * dt * 1852 / 3600;
+-- A report is reachable from another when the straight line between them needs at most speed_kn.
+CREATE OR REPLACE TEMP MACRO reach(d, dt) AS d <= getvariable('speed_kn') * dt * 1852 / 3600;
 CREATE OR REPLACE TEMP MACRO dist(x1, y1, x2, y2) AS sqrt((x2 - x1) ^ 2 + (y2 - y1) ^ 2);
 
 CREATE OR REPLACE TEMP TABLE kept AS
@@ -105,9 +108,9 @@ SELECT mmsi, unnest(kept_rns) AS rn FROM (
     GROUP BY p.mmsi HAVING count(*) > 1))
 WHERE len(kept_rns) > 0;
 
--- The clean points, cut into pieces at silences over 600 s.
+-- The clean points, cut into pieces at silences over gap_s.
 CREATE OR REPLACE TEMP TABLE clean AS
-SELECT *, sum(CASE WHEN ts - lag_ts > 600 THEN 1 ELSE 0 END)
+SELECT *, sum(CASE WHEN ts - lag_ts > getvariable('gap_s') THEN 1 ELSE 0 END)
             OVER (PARTITION BY mmsi ORDER BY t) AS seq
 FROM (
   SELECT *, lag(ts) OVER (PARTITION BY mmsi ORDER BY t) AS lag_ts
@@ -140,7 +143,8 @@ FROM (
 -- The hysteresis, and the stopped runs lasting at least 300 s.
 CREATE OR REPLACE TEMP TABLE stop_run AS
 WITH mk AS (
-  SELECT *, CASE WHEN v <= 0.2 THEN true WHEN v >= 0.5 THEN false END AS mark FROM speed),
+  SELECT *, CASE WHEN v <= getvariable('stop_kn') THEN true
+                  WHEN v >= getvariable('move_kn') THEN false END AS mark FROM speed),
 g AS (SELECT *, count(mark) OVER (PARTITION BY mmsi, seq ORDER BY t) AS grp FROM mk),
 s AS (
   SELECT *, coalesce(first_value(mark) OVER (PARTITION BY mmsi, seq, grp ORDER BY t), false)
