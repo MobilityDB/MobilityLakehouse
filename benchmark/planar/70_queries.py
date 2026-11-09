@@ -22,7 +22,7 @@ catalog prunes files on; `--bounds struct` filters on trip_bbox / trip_tspan, wh
 pruning reads.
 
   RUN=data/stage/planar/2026-01-01_2026-02-01 benchmark/planar/70_queries.py --mode warm \
-      [--layouts L0 L0X ...] [--windows 1h 1day ...] [--queries q01 q02 ...] [--iter 5]
+      [--layouts L0 L0X ...] [--windows 1h 1day ...] [--queries q01 q02 ...] [--iter 10]
 
 Environment: RUN (required); ROOT (the repository's data/), the tree holding results/, tmp/ and
 the DuckLake store; DUCKDB; QUERY_MEMORY (12GB); QUERY_OUT.
@@ -207,7 +207,7 @@ def main():
     ap.add_argument('--layouts', nargs='+', default=LAYOUTS)
     ap.add_argument('--windows', nargs='+', default=['1h', '1day', '1week', '1month'])
     ap.add_argument('--queries', nargs='+', default=list(QUERIES))
-    ap.add_argument('--iter', type=int, default=5)
+    ap.add_argument('--iter', type=int, default=10)
     ap.add_argument('--source', choices=('lake', 'iceberg', 'ducklake'), default='lake')
     ap.add_argument('--namespace', default='trips')
     ap.add_argument('--bounds', choices=('flat', 'struct'), default='flat')

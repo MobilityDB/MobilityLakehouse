@@ -124,11 +124,16 @@ L1 to L4) and `layout_compact/` (L1s to L4s). The results land in
 - `answers.csv`, the answer of each query in each window, read from L0 (`planar/72_answers.py`);
 - `recall.csv`, each layout's count over L0's for the counting queries, per window, which reads
   1.0000 wherever L0's answer is not zero;
-- `query-runtime-summary.csv`, per layout, window and query, the trimmed mean of five warm runs,
-  its 95% interval, the peak memory, and whether the runs agree and match L0
-  (`planar/71_summarize.py`);
-- `query-runtime-iceberg-summary.csv` and `query-runtime-ducklake-summary.csv`, the same for the
-  queries read through the Iceberg catalog and through DuckLake;
+- `query-runtime-summary.csv`, per layout, window and query, the median and the mean of ten warm
+  runs, every run kept, with the standard deviation, the 95% interval of the mean, the peak memory,
+  and whether the runs agree and match L0 (`planar/71_summarize.py`);
+- `query-speedups.csv`, each layout's speedup over L0 per window and query, per query, per window
+  and over all of them, the geometric mean of the ratios of the means, with a 95% bootstrap
+  interval; `query-speedups-cold.csv`, the same over the cold runs;
+- `query-runtime-iceberg-summary.csv` and `query-runtime-ducklake-summary.csv`, the same summary
+  for the queries read through the Iceberg catalog and through DuckLake, and
+  `query-runtime-iceberg-speedups.csv` and `query-runtime-ducklake-speedups.csv`, each layout's
+  speedup through the catalog over the same layout's files;
 - `figures/`, the evaluation figures: the share of its bytes each layout reads, the speedup of
   each query and layout over L0, the trade-off of speedup against bytes read, and the files a
   query reads and the speedup it gains through each catalog; and, from the `cover-figures` step,

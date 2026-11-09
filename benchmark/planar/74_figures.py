@@ -5,7 +5,7 @@ PNG files in the output directory, from the tables reproduce.sh writes in the re
   eval_month_pruning_bytes.png    per layout, the share of its bytes a query reads in each window, the mean
                        over the four regions (layout-pruning.csv);
   eval_month_speedup_heatmap.png  per query and layout, the speedup over L0, the geometric mean over the four
-                       windows of L0's trimmed mean over the layout's (query-runtime-summary.csv,
+                       windows of L0's mean over the layout's (query-runtime-summary.csv,
                        files read directly, flat bounds);
   eval_month_tradeoff.png         per layout, the geometric-mean speedup over every query and window against
                        the mean share of its bytes read over the sixteen region-window pairs, each
@@ -100,17 +100,17 @@ def bytes_read(path):
 
 
 def runtimes(path, source):
-    """The warm trimmed mean per (layout, window, query) of one source, flat bounds"""
+    """The warm mean per (layout, window, query) of one source, flat bounds"""
     t = {}
     with open(path) as f:
         for r in csv.DictReader(f):
             if (r['source'], r['bounds'], r['mode']) == (source, 'flat', 'warm'):
-                t[(r['layout'], r['window'], r['query'])] = float(r['trimmed_mean_s'])
+                t[(r['layout'], r['window'], r['query'])] = float(r['mean_s'])
     return t
 
 
 def speedups(path):
-    """L0's trimmed mean over each layout's, per (layout, window, query)."""
+    """L0's mean over each layout's, per (layout, window, query)."""
     t = runtimes(path, 'lake')
     return {(lay, w, q): t[('L0', w, q)] / s for (lay, w, q), s in t.items()}
 

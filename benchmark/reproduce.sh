@@ -11,8 +11,9 @@
 # 81_register_ducklake.sh, the services of planar/iceberg/docker-compose.yml), answers the ten
 # benchmark queries on every layout and window once
 # and derives the answers table and each layout's recall against L0 (planar/70_queries.py,
-# 72_answers.py), and times them, five warm runs each, summarized per group
-# (planar/70_queries.py --mode warm, 71_summarize.py). The archives are the Danish Maritime
+# 72_answers.py), and times them, ten warm runs each after one untimed, summarized per group with
+# each layout's speedup over L0 and its bootstrap interval (planar/70_queries.py --mode warm,
+# 71_summarize.py). The archives are the Danish Maritime
 # Authority's and are fetched onto this machine first, with ingest/fetch_dma.sh; this script stops
 # and names that command when a day of the period is neither downloaded nor already in the raw zone.
 #
@@ -207,6 +208,7 @@ if want timing; then
   mkdir -p "$OUT"; rm -f "$OUT/query-runtime.csv"
   QUERY_OUT="$OUT/query-runtime.csv" python3 "$B/planar/70_queries.py" --mode warm
   python3 "$B/planar/71_summarize.py" "$OUT/query-runtime.csv" > "$OUT/query-runtime-summary.csv"
+  python3 "$B/planar/71_summarize.py" "$OUT/query-runtime.csv" --speedups > "$OUT/query-speedups.csv"
 fi
 # The ten queries timed through each catalog, as the timing step times them over the files
 if want catalog-timing; then
@@ -217,6 +219,8 @@ if want catalog-timing; then
       --source "$src"
     python3 "$B/planar/71_summarize.py" "$OUT/query-runtime-$src.csv" \
       > "$OUT/query-runtime-$src-summary.csv"
+    python3 "$B/planar/71_summarize.py" "$OUT/query-runtime-$src.csv" --speedups \
+      --against "$OUT/query-runtime.csv" > "$OUT/query-runtime-$src-speedups.csv"
   done
 fi
 if want mobilitydb; then
@@ -249,5 +253,7 @@ if want cold; then
   QUERY_OUT="$OUT/query-runtime-cold.csv" python3 "$B/planar/70_queries.py" --mode cold
   python3 "$B/planar/71_summarize.py" "$OUT/query-runtime-cold.csv" \
     > "$OUT/query-runtime-cold-summary.csv"
+  python3 "$B/planar/71_summarize.py" "$OUT/query-runtime-cold.csv" --speedups \
+    > "$OUT/query-speedups-cold.csv"
 fi
 echo ">> $FROM..$TO done, run $RUN, results $OUT"
