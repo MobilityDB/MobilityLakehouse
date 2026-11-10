@@ -119,8 +119,11 @@ def covering(text, bounds):
     return text
 
 
-def statements(query, regions, t0, t1, bounds, qdir=QDIR):
-    """The statements one run of the query executes, bound"""
+def statements(query, regions, t0, t1, bounds, qdir=None):
+    """The statements one run of the query executes, bound, from the query text in `qdir`, or
+    else in QDIR as it reads when called: 56_answer_sets.py, 75_mobilitydb.py and 76_mobilityspark.py
+    set QDIR to the directory of their own forms of the queries after importing this module"""
+    qdir = qdir or QDIR
     region, gate = QUERIES[query]
     ts = lambda t: t.strftime('%Y-%m-%d %H:%M:%S')
     tmid = t0 + (t1 - t0) / 2
