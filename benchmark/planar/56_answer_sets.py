@@ -37,6 +37,10 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 
+# A row the engine prints can hold one long field: the temporal count of Query 10 over a week is a
+# single text value longer than the 131,072 characters the csv module reads by default
+csv.field_size_limit(sys.maxsize)
+
 # The binding of 70_queries.py, reading the query text from queries_sets/ instead of queries/
 spec = importlib.util.spec_from_file_location('queries70', HERE / '70_queries.py')
 q70 = importlib.util.module_from_spec(spec)
