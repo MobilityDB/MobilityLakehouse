@@ -10,13 +10,22 @@
 -- Requires 03_ais.sql and 04_excursions.sql.
 SET TIMEZONE TO 'UTC';
 
--- The track the figures draw is one excursion of a pilot vessel, which the WHERE clause below
--- identifies by its MMSI and its start instant: it leaves its berth in Frederikshavn and returns
--- to rest there. 04_excursions.sql ranks the candidates by the cells their traversal adds.
+-- The track the figures draw is one excursion of a vessel: it leaves its berth in Frederikshavn
+-- and returns to rest there. :trip_mmsi names the vessel and :trip_t0 the start
+-- instant of the excursion; with :trip_t0 empty, the excursion of that vessel whose traversal adds
+-- the most cells to its per-instant cover, as 04_excursions.sql scores them, the earliest first
+-- on a tie.
 DROP TABLE IF EXISTS FigTrip;
 CREATE TABLE FigTrip AS
-SELECT MMSI, Trip FROM Excursion
-WHERE MMSI = 219002732 AND T0 = '2025-01-02 12:17:04';
+SELECT e.MMSI, e.Trip FROM Excursion e
+WHERE e.Id = (
+  SELECT s.Id FROM ExcursionScore s
+  WHERE s.MMSI = :trip_mmsi AND (:'trip_t0' = '' OR s.T0 = NULLIF(:'trip_t0', '')::timestamptz)
+  ORDER BY s.Trav9 - s.Inst9 DESC, s.Trav8 - s.Inst8 DESC, s.T0
+  LIMIT 1);
+SELECT MMSI, startTimestamp(Trip) AS T0, numInstants(Trip) AS NInst,
+  round(length(transform(Trip, 25832))::numeric) AS LenM
+FROM FigTrip;
 
 DROP TABLE IF EXISTS FigTripLine;
 CREATE TABLE FigTripLine AS
