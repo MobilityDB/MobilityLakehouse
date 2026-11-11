@@ -33,6 +33,13 @@ their times and answers, and every run it did not finish is recorded without a t
 error `stopped at the limit of SECONDS s`, so a query too slow to time to the end is reported as
 taking longer than the limit.
 
+DuckDB's timer reads the wall clock, which the operating system may step while an engine runs (a
+virtual machine's time synchronization does), so a step enters the run's time and a step back
+makes it zero or negative. While an engine runs, the offset of the wall clock from the monotonic
+clock is sampled every 10 ms; an engine during which it moves by more than 1 ms between two
+samples is run again, up to CLOCK_RETRIES times (3), and runs still taken across a step are
+recorded with the error `the clock stepped by S s`.
+
 Environment: RUN (required); ROOT (the repository's data/), the tree holding results/, tmp/ and
 the DuckLake store; DUCKDB; QUERY_MEMORY (12GB); QUERY_OUT; QUERY_WINDOWS, the windows file read
 in place of windows_25832.csv (47_diversity_windows.py writes them).
@@ -46,6 +53,7 @@ import re
 import signal
 import subprocess
 import sys
+import threading
 import time
 from pathlib import Path
 
@@ -58,6 +66,8 @@ WINDOWS = Path(os.environ.get('QUERY_WINDOWS') or Path(__file__).resolve().with_
 os.environ['DUCKDB_ENGINE'] = os.environ.get('DUCKDB_ENGINE') or os.environ.get('DUCKDB') or ''
 DUCKDB = str(Path(__file__).with_name('duckdb.sh'))
 MEM =os.environ.get('QUERY_MEMORY', '12GB')
+CLOCK_RETRIES = int(os.environ.get('CLOCK_RETRIES', '3'))
+CLOCK_STEP = 0.001
 SRID = 25832
 
 # query -> (region, gate in metres or None); q01 reads the two ports
@@ -177,14 +187,45 @@ def engine_script(path, source, spill, runs, stmts):
     path.write_text('\n'.join(lines) + '\n')
 
 
-def run_engine(script, limit=None):
+def clock_offset():
+    """The offset of the wall clock, which DuckDB's timer reads, from the monotonic clock that
+    #main of 76_mobilityspark.py times its jobs by"""
+    return time.time() - time.monotonic()
+
+
+def run_engine(script, limit=None, before=None):
+    """Run one engine as #engine_once does, calling `before` first, and again when the wall
+    clock steps while it runs; return ({run: (seconds, answer)}, peak_kb, error)"""
+    for _ in range(CLOCK_RETRIES + 1):
+        if before:
+            before()
+        (runs, peak, err), step = engine_once(script, limit)
+        if step <= CLOCK_STEP:
+            return runs, peak, err
+    return runs, peak, f'{err} the clock stepped by {step:.3f} s'.strip()
+
+
+def engine_once(script, limit=None):
     """Run one engine, stopped after `limit` seconds when one is given; return
-    ({run: (seconds, answer)}, peak_kb, error)"""
+    (({run: (seconds, answer)}, peak_kb, error), the largest step of the wall clock in seconds)"""
     # The engine runs in a session of its own, so that stopping it at the limit stops duckdb.sh
     # and the engine it starts, not /usr/bin/time alone
     proc = subprocess.Popen(['/usr/bin/time', '-f', '@@PEAKKB %M', DUCKDB, '-unsigned',
                              '-c', f'.read {script}'], stdout=subprocess.PIPE,
                             stderr=subprocess.PIPE, text=True, start_new_session=True)
+    done = threading.Event()
+    step = [0.0]
+
+    def watch():
+        prev = clock_offset()
+        while not done.wait(0.01):
+            cur = clock_offset()
+            step[0] = max(step[0], abs(cur - prev))
+            prev = cur
+        step[0] = max(step[0], abs(clock_offset() - prev))
+
+    watcher = threading.Thread(target=watch, daemon=True)
+    watcher.start()
     try:
         stdout, stderr = proc.communicate(timeout=limit)
         stopped = False
@@ -192,6 +233,8 @@ def run_engine(script, limit=None):
         os.killpg(proc.pid, signal.SIGKILL)
         stdout, stderr = proc.communicate()
         stopped = True
+    done.set()
+    watcher.join()
     peak = None
     m = re.search(r'@@PEAKKB (\d+)', stderr)
     if m:
@@ -220,7 +263,7 @@ def run_engine(script, limit=None):
     if stopped and cur is not None:
         # the run the limit interrupted has neither its whole time nor its answer
         del runs[cur]
-    return {k: tuple(v) for k, v in runs.items()}, peak, err
+    return ({k: tuple(v) for k, v in runs.items()}, peak, err), step[0]
 
 
 def drop_caches(data_dir):
@@ -286,8 +329,8 @@ def main():
                         engine_script(script, source, spill, [1], stmts[qdir])
                         rows = []
                         for k in range(1, a.iter + 1):
-                            drop_caches(run)
-                            runs, peak, err = run_engine(script, a.limit)
+                            runs, peak, err = run_engine(script, a.limit,
+                                                         before=lambda: drop_caches(run))
                             s, ans = runs.get(1, (None, ''))
                             rows.append((k, s, ans, peak, err))
                     for k, s, ans, peak, err in rows:
