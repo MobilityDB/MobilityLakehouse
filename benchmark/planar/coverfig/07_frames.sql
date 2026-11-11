@@ -9,9 +9,32 @@
 DROP TABLE IF EXISTS FigFrame;
 CREATE TABLE FigFrame (Fig text PRIMARY KEY, Res integer, Excerpt text,
   Geom geometry(Polygon, 25832));
+-- The trip's frames follow the trip 05_trip_cells.sql picks: the coarse frame holds its whole track
+-- with a margin of 1 km, widened to 4:3, and the fine frame, the excerpt, is a 4 km by 3 km
+-- window centred on the cells of resolution 9 the traversal adds (class ii), or on the track's
+-- middle where it adds none. Both are rounded outward to 100 m.
+WITH T AS (
+  SELECT ST_Transform(trajectory(Trip), 25832) AS G FROM FigTrip),
+E AS (
+  SELECT ST_XMin(G) - 1000 AS X0, ST_YMin(G) - 1000 AS Y0, ST_XMax(G) + 1000 AS X1,
+    ST_YMax(G) + 1000 AS Y1 FROM T),
+W AS (
+  SELECT (X0 + X1) / 2 AS CX, (Y0 + Y1) / 2 AS CY,
+    greatest(X1 - X0, (Y1 - Y0) * 4 / 3.0) AS Wd FROM E),
+C AS (
+  SELECT COALESCE(
+    (SELECT ST_Centroid(ST_Collect(ST_Transform(Geom, 25832))) FROM FigTripCells
+     WHERE Res = 9 AND Class = 'ii'),
+    (SELECT ST_LineInterpolatePoint(G, 0.5) FROM T)) AS P)
+INSERT INTO FigFrame
+SELECT 'trip_res8', 8, 'trip_res9',
+  ST_MakeEnvelope(floor((CX - Wd / 2) / 100) * 100, floor((CY - Wd * 3 / 8) / 100) * 100,
+    ceil((CX + Wd / 2) / 100) * 100, ceil((CY + Wd * 3 / 8) / 100) * 100, 25832) FROM W
+UNION ALL
+SELECT 'trip_res9', 9, NULL,
+  ST_MakeEnvelope(round(ST_X(P) / 100) * 100 - 2000, round(ST_Y(P) / 100) * 100 - 1500,
+    round(ST_X(P) / 100) * 100 + 2000, round(ST_Y(P) / 100) * 100 + 1500, 25832) FROM C;
 INSERT INTO FigFrame VALUES
-  ('trip_res8',   8, 'trip_res9',   ST_MakeEnvelope(591700, 6364383, 603700, 6373383, 25832)),
-  ('trip_res9',   9, NULL,          ST_MakeEnvelope(598300, 6368430, 602300, 6371430, 25832)),
   ('region_res8', 8, 'region_res9', ST_MakeEnvelope(659849, 6225412, 676249, 6237712, 25832)),
   ('region_res9', 9, NULL,          ST_MakeEnvelope(666322, 6230123, 669122, 6232223, 25832));
 

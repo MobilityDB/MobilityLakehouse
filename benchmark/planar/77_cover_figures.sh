@@ -14,9 +14,12 @@
 #
 # Environment: ROOT (the repository's data/); MOBILITYDB_PG_PREFIX (required), the staged
 # PostgreSQL prefix of a MobilityDB build carrying H3, the <DESTDIR>/usr/local/pgsql/<major> of a
-# DESTDIR install, whose catalog the cluster loads; AIS_ARCHIVES, the raw DMA csv files the track
-# is read from (data/archives/aisdk-2025-01-0*.csv); NATURAL_AREAS, the gzipped WDPA export the
-# protected area is read from (data/archives/natural_areas.csv.gz); PG_BIN, the PostgreSQL binaries
+# DESTDIR install, whose catalog the cluster loads; AIS_ARCHIVES, the files the track is read
+# from, the parquet files of the raw zone (data/raw/aisdk-2026-01-*.parquet) or raw DMA csv files;
+# NATURAL_AREAS, the gzipped WDPA export the protected area is read from
+# (data/archives/natural_areas.csv.gz); TRIP_MMSI (219020146) and TRIP_T0 (2026-01-28 11:05:01+00)
+# the excursion drawn by 05_trip_cells.sql, the paper's Figure 5, a 7 m rigid inflatable boat
+# off Frederikshavn, TRIP_T0 empty for the excursion of that vessel adding the most cells; PG_BIN, the PostgreSQL binaries
 # (the prefix's own bin); PG_PORT (55453); FIGURES_DEST, where the PNGs are copied
 # ($ROOT/results/planar/figures); QGIS_PYTHON, the interpreter carrying the QGIS Python API.
 #
@@ -41,8 +44,10 @@ export AIS_CSV=${AIS_CSV:-$ROOT/stage/coverfig/ais_frederikshavn.csv}
 : "${MOBILITYDB_PG_PREFIX:?set MOBILITYDB_PG_PREFIX to the staged PostgreSQL prefix of a MobilityDB build carrying H3}"
 export MOBILITYDB_PG_PREFIX
 export PG_BIN=${PG_BIN:-$MOBILITYDB_PG_PREFIX/bin}
-export AIS_ARCHIVES=${AIS_ARCHIVES:-$ROOT/archives/aisdk-2025-01-0*.csv}
+export AIS_ARCHIVES=${AIS_ARCHIVES:-$ROOT/raw/aisdk-2026-01-*.parquet}
 export NATURAL_AREAS=${NATURAL_AREAS:-$ROOT/archives/natural_areas.csv.gz}
+export TRIP_MMSI=${TRIP_MMSI:-219020146}
+export TRIP_T0=${TRIP_T0-2026-01-28 11:05:01+00}
 
 mkdir -p "$STAGE" "$FIGURES_DEST" "$(dirname "$AIS_CSV")"
 
@@ -55,7 +60,8 @@ trap '"$PG_BIN/pg_ctl" -D "$PGDATA_DIR" stop -m fast > /dev/null 2>&1 || true' E
 bash "$C/01_prefilter_ais.sh"
 for f in 02_natural_areas 03_ais 04_excursions 05_trip_cells 06_region_cells 07_frames; do
   echo "=== $f"
-  "${PSQL[@]}" -v ais_csv="$AIS_CSV" -v natural_areas="$NATURAL_AREAS" -f "$C/$f.sql"
+  "${PSQL[@]}" -v ais_csv="$AIS_CSV" -v natural_areas="$NATURAL_AREAS" \
+    -v trip_mmsi="$TRIP_MMSI" -v trip_t0="$TRIP_T0" -f "$C/$f.sql"
 done
 bash "$C/08_export.sh"
 bash "$C/render.sh"

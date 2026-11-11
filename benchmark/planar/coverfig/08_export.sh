@@ -13,7 +13,7 @@ command -v ogr2ogr > /dev/null || { echo "no ogr2ogr; install GDAL" >&2; exit 1;
 mkdir -p "$STAGE"
 cd "$STAGE"
 rm -f trip_line.gpkg trip_samples.gpkg trip_cells.gpkg region_polygon.gpkg region_cells.gpkg \
-  grid.gpkg excerpt.gpkg
+  grid.gpkg excerpt.gpkg frames.csv
 PG="PG:host=$SOCK port=$PORT user=postgres dbname=coverfig"
 export PGTZ=UTC
 
@@ -34,6 +34,10 @@ ogr2ogr -f GPKG -a_srs EPSG:4326 -nlt POLYGON grid.gpkg "$PG" -nln grid -overwri
 ogr2ogr -f GPKG -a_srs EPSG:25832 -nlt POLYGON excerpt.gpkg "$PG" -nln excerpt -overwrite -sql \
   "SELECT f.Fig AS fig, e.Geom AS geom FROM FigFrame f JOIN FigFrame e ON e.Fig = f.Excerpt"
 
+# The frame of each figure, which make_jobs.py places the renders by
+ogr2ogr -f CSV frames.csv "$PG" -sql \
+  "SELECT Fig AS fig, ST_XMin(Geom) AS xmin, ST_YMin(Geom) AS ymin, ST_XMax(Geom) AS xmax, \
+     ST_YMax(Geom) AS ymax FROM FigFrame ORDER BY Fig"
 for f in trip_line trip_samples trip_cells region_polygon region_cells grid excerpt; do
   echo "$f: $(ogrinfo -so -al "$f.gpkg" | grep -E 'Feature Count')"
 done

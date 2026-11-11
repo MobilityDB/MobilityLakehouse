@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Pre-filter the raw DMA AIS files the track is read from to a box around Frederikshavn, keeping
-# the columns the trip needs.
+# Pre-filter the raw DMA AIS files the track is read from, csv archives or the parquet files of
+# the raw zone, to a box around Frederikshavn, keeping the columns the trip needs.
 #
 # The figures need one vessel over a few hours, so reading the archives once into a small csv
 # costs less than loading a month into the figure cluster. Every column is read as VARCHAR and cast
@@ -22,6 +22,19 @@ COLS="{'# Timestamp':'VARCHAR','Type of mobile':'VARCHAR','MMSI':'VARCHAR','Lati
 'Type of position fixing device':'VARCHAR','Draught':'VARCHAR','Destination':'VARCHAR',\
 'ETA':'VARCHAR','Data source type':'VARCHAR','A':'VARCHAR','B':'VARCHAR','C':'VARCHAR','D':'VARCHAR'}"
 
+# The parquet files of the raw zone (raw_zone.sh) carry the same fields typed and renamed
+if [[ "$ARCHIVES" == *.parquet ]]; then
+  "$DUCKDB" -c "
+SET threads=12;
+COPY (
+  SELECT T AS t, TypeOfMobile AS mobile, MMSI AS mmsi, Latitude AS lat, Longitude AS lon, SOG AS sog,
+         ShipType AS shiptype, Name AS name
+  FROM read_parquet('$ARCHIVES')
+  WHERE Latitude BETWEEN 57.30 AND 57.70 AND Longitude BETWEEN 10.30 AND 11.00
+) TO '$OUT' (HEADER, DELIMITER ',');"
+  wc -l "$OUT"
+  exit 0
+fi
 "$DUCKDB" -c "
 SET threads=12;
 COPY (

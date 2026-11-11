@@ -9,8 +9,8 @@ given (render_map.py) rather than a drawn figure.
 One palette serves the four renders: class (i) in blue, class (ii) in orange, the track in red with
 its recorded positions as dots, the protected area outlined in green, and the excerpt the finer
 figure states outlined in black. The frames are those of FigFrame in 07_frames.sql, in EPSG:25832,
-each with a 4:3 aspect, read from that file rather than repeated here, so moving a figure is an
-edit in one place.
+each with a 4:3 aspect, which 08_export.sh writes to frames.csv in the directory this script writes
+its jobs to, so a frame computed from the trip drawn moves the figure without any other edit.
 
 Environment: STAGE, the directory holding the GeoPackages 08_export.sh writes and the PNGs the
 render leaves beside them, as the QGIS process sees it; STAGE_QGIS overrides it where that process
@@ -18,9 +18,9 @@ names the directory differently. Under a QGIS running on the Windows host the QG
 `C:\\Windows\\Temp\\h3cover` while the shell writes /mnt/c/Windows/Temp/h3cover, and render.sh
 passes the QGIS one.
 """
+import csv
 import json
 import os
-import re
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -30,11 +30,10 @@ if not STAGE.endswith(SEP):
     STAGE += SEP
 SIZE = [1100, 825]
 
-FRAMES = {
-    m.group(1): [int(v) for v in m.group(2).split(",")]
-    for m in re.finditer(r"\('(\w+)',[^\n]*ST_MakeEnvelope\(([\d, ]+), 25832\)",
-                         open(os.path.join(HERE, "07_frames.sql"), encoding="utf-8").read())
-}
+OUT = sys.argv[1] if len(sys.argv) > 1 else HERE
+with open(os.path.join(OUT, "frames.csv"), encoding="utf-8") as _f:
+    FRAMES = {r["fig"]: [round(float(r[k])) for k in ("xmin", "ymin", "xmax", "ymax")]
+              for r in csv.DictReader(_f)}
 LAND = "#f2efe9"
 BASEMAP = {"type": "shortbread", "water": "#cfe1f1", "streets": "#d6cdbf",
            "buildings": "#e3dbd0"}
@@ -107,11 +106,10 @@ JOBS = {
 if __name__ == "__main__":
     missing = [n for n in JOBS if n not in FRAMES]
     if missing:
-        print("07_frames.sql states no frame for: " + ", ".join(missing), file=sys.stderr)
+        print("frames.csv states no frame for: " + ", ".join(missing), file=sys.stderr)
         raise SystemExit(1)
-    out = sys.argv[1] if len(sys.argv) > 1 else HERE
     for name, spec in JOBS.items():
-        path = os.path.join(out, f"job_{name}.json")
+        path = os.path.join(OUT, f"job_{name}.json")
         with open(path, "w", encoding="utf-8") as f:
             json.dump(spec, f, indent=1)
         print("wrote", path)
