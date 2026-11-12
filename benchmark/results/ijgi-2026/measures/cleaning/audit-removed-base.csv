@@ -1,0 +1,143 @@
+removed_at,ship_type,reports_class,vessels,reports
+Class A,Cargo,10-99,3,77
+Class A,Cargo,100-999,2,1115
+Class A,Cargo,1000-9999,2,3091
+Class A,Cargo,10000+,7,245619
+Class A,Diving,10-99,5,114
+Class A,Diving,10000+,3,81655
+Class A,Dredging,10-99,1,81
+Class A,Dredging,100-999,1,104
+Class A,Dredging,1000-9999,4,14754
+Class A,Dredging,10000+,4,94701
+Class A,Fishing,1-9,2,8
+Class A,Fishing,10-99,21,1026
+Class A,Fishing,100-999,25,10097
+Class A,Fishing,1000-9999,24,100680
+Class A,Fishing,10000+,76,2281090
+Class A,HSC,10-99,1,71
+Class A,HSC,100-999,1,662
+Class A,HSC,1000-9999,3,11924
+Class A,HSC,10000+,1,28414
+Class A,Law enforcement,10-99,2,73
+Class A,Law enforcement,100-999,3,797
+Class A,Law enforcement,1000-9999,1,5584
+Class A,Military,10-99,7,293
+Class A,Military,100-999,4,1323
+Class A,Military,1000-9999,3,8385
+Class A,Other,1-9,4,16
+Class A,Other,10-99,2,25
+Class A,Other,100-999,3,1160
+Class A,Other,1000-9999,10,42307
+Class A,Other,10000+,16,466466
+Class A,Passenger,1-9,1,1
+Class A,Passenger,10-99,5,213
+Class A,Passenger,100-999,5,1463
+Class A,Passenger,1000-9999,9,44997
+Class A,Passenger,10000+,31,840171
+Class A,Pilot,100-999,1,760
+Class A,Pilot,1000-9999,1,8209
+Class A,Pilot,10000+,3,87192
+Class A,Pleasure,1-9,37,178
+Class A,Pleasure,10-99,127,5680
+Class A,Pleasure,100-999,144,50882
+Class A,Pleasure,1000-9999,83,357585
+Class A,Pleasure,10000+,208,5084020
+Class A,Port tender,1-9,1,1
+Class A,Port tender,10-99,2,83
+Class A,Port tender,100-999,2,1079
+Class A,Port tender,1000-9999,1,7761
+Class A,Port tender,10000+,8,217925
+Class A,Reserved,10-99,1,12
+Class A,Reserved,1000-9999,2,4674
+Class A,SAR,1-9,5,22
+Class A,SAR,10-99,15,740
+Class A,SAR,100-999,35,11788
+Class A,SAR,1000-9999,11,34502
+Class A,SAR,10000+,8,190370
+Class A,Sailing,1-9,24,138
+Class A,Sailing,10-99,94,4366
+Class A,Sailing,100-999,77,30947
+Class A,Sailing,1000-9999,48,181311
+Class A,Sailing,10000+,96,2706364
+Class A,Spare 2,1000-9999,1,6431
+Class A,Spare 2,10000+,1,37593
+Class A,Tanker,100-999,1,224
+Class A,Tanker,1000-9999,1,1109
+Class A,Tanker,10000+,3,106457
+Class A,Towing,100-999,2,579
+Class A,Towing,1000-9999,2,4176
+Class A,Towing,10000+,2,43842
+Class A,Tug,10-99,4,277
+Class A,Tug,100-999,2,222
+Class A,Tug,1000-9999,5,12355
+Class A,Tug,10000+,9,319490
+Class A,Undefined,1-9,541,1705
+Class A,Undefined,10-99,171,5891
+Class A,Undefined,100-999,105,32375
+Class A,Undefined,1000-9999,76,315619
+Class A,Undefined,10000+,165,37021212
+in the study area,Anti-pollution,1-9,1,7
+in the study area,Cargo,1-9,3,3
+in the study area,Cargo,10-99,5,222
+in the study area,Cargo,100-999,6,2316
+in the study area,Cargo,1000-9999,3,9700
+in the study area,Cargo,10000+,1,14644
+in the study area,Dredging,1-9,1,1
+in the study area,Dredging,100-999,2,1238
+in the study area,Dredging,1000-9999,2,3163
+in the study area,Fishing,1-9,2,10
+in the study area,Fishing,10-99,2,119
+in the study area,Fishing,100-999,11,4343
+in the study area,Fishing,1000-9999,8,30069
+in the study area,HSC,1-9,1,9
+in the study area,HSC,10-99,1,22
+in the study area,HSC,100-999,1,590
+in the study area,HSC,1000-9999,2,2706
+in the study area,Law enforcement,100-999,2,561
+in the study area,Law enforcement,1000-9999,1,1619
+in the study area,Military,100-999,1,133
+in the study area,Other,1-9,2,9
+in the study area,Other,10-99,3,106
+in the study area,Other,100-999,5,1695
+in the study area,Other,1000-9999,10,41467
+in the study area,Other,10000+,1,12341
+in the study area,Passenger,1-9,6,16
+in the study area,Passenger,10-99,2,104
+in the study area,Passenger,100-999,2,1142
+in the study area,Passenger,1000-9999,8,16390
+in the study area,Pilot,1-9,1,1
+in the study area,Pilot,100-999,1,205
+in the study area,Pleasure,10000+,1,217981
+in the study area,SAR,10-99,1,84
+in the study area,SAR,100-999,3,1102
+in the study area,Sailing,1-9,1,1
+in the study area,Spare 2,100-999,1,424
+in the study area,Tanker,1-9,2,2
+in the study area,Tanker,100-999,2,907
+in the study area,Towing,1-9,1,1
+in the study area,Tug,1-9,2,2
+in the study area,Tug,10-99,1,51
+in the study area,Tug,100-999,5,1446
+in the study area,Tug,1000-9999,1,4019
+in the study area,Tug,10000+,1,162570
+in the study area,Undefined,1-9,193,353
+in the study area,Undefined,10-99,46,1757
+in the study area,Undefined,100-999,6,1162
+ship-station MMSI,Cargo,1-9,2,2
+ship-station MMSI,Fishing,100-999,1,225
+ship-station MMSI,Fishing,1000-9999,1,2297
+ship-station MMSI,Military,100-999,2,1438
+ship-station MMSI,Military,1000-9999,2,3915
+ship-station MMSI,Other,1-9,1,3
+ship-station MMSI,Other,1000-9999,1,9459
+ship-station MMSI,Passenger,1-9,1,1
+ship-station MMSI,Reserved,10000+,1,530106
+ship-station MMSI,SAR,1-9,1,3
+ship-station MMSI,SAR,100-999,1,430
+ship-station MMSI,SAR,1000-9999,4,18408
+ship-station MMSI,SAR,10000+,8,974983
+ship-station MMSI,Tug,1-9,1,1
+ship-station MMSI,Undefined,1-9,82,82
+ship-station MMSI,Undefined,10-99,2,60
+ship-station MMSI,Undefined,1000-9999,1,6011
+ship-station MMSI,Undefined,10000+,5,2019391

@@ -1,0 +1,12 @@
+step,rule,reports,vessels
+1,raw reports,485313080,8558
+2,Class A,433835609,6141
+3,ship-station MMSI,430364487,6024
+4,in the study area,428671998,5660
+5,plausible dimensions,428392913,5660
+6,staged (the buckets),428392913,5660
+7,one report per vessel and instant,266241767,5660
+8,vessels the walk keeps,266241767,5660
+9,reports the walk accepts,265659026,5660
+10,segments,327030,5660
+11,segments in motion,192763,5458

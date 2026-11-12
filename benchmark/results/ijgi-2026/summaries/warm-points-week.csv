@@ -1,0 +1,7 @@
+source,bounds,layout,window,query,mode,n,median_s,mean_s,sd_s,ci95_s,min_s,max_s,answer,answers_agree,matches_L0,peak_kb,load1,error
+lake,flat,GP,1week,q09,warm,3,1630.5340,1635.3033,20.6317,51.2560,1617.4740,1657.9020,259,True,False,1303620,1.95,
+lake,flat,GP,1week,q10,warm,3,0.9200,0.9213,0.0400,0.0994,0.8820,0.9620,33,True,True,1123640,8.42,
+lake,flat,L0,1week,q09,warm,3,6.3610,6.4640,0.2185,0.5429,6.3160,6.7150,278,True,True,3637812,0.90,
+lake,flat,L0,1week,q10,warm,3,5.5550,5.8337,0.6273,1.5584,5.3940,6.5520,33,True,True,3268476,12.52,
+lake,flat,L3s,1week,q09,warm,3,2.4750,2.4407,0.0656,0.1630,2.3650,2.4820,278,True,True,1440964,1.94,
+lake,flat,L3s,1week,q10,warm,3,1.9050,1.9367,0.0841,0.2089,1.8730,2.0320,33,True,True,1089396,9.58,

@@ -1,0 +1,13 @@
+source,bounds,mode,layout,scope,window,query,conditions,speedup,ci_low,ci_high
+lake,flat,warm,GP,cell,1week,q09,1,0.0040,0.0038,0.0041
+lake,flat,warm,GP,cell,1week,q10,1,6.3318,5.7669,7.0518
+lake,flat,warm,GP,query,,q09,1,0.0040,0.0038,0.0041
+lake,flat,warm,GP,query,,q10,1,6.3318,5.7669,7.0518
+lake,flat,warm,GP,window,1week,,2,0.1582,0.1503,0.1674
+lake,flat,warm,GP,all,,,2,0.1582,0.1503,0.1674
+lake,flat,warm,L3s,cell,1week,q09,1,2.6485,2.5532,2.7513
+lake,flat,warm,L3s,cell,1week,q10,1,3.0122,2.7380,3.3646
+lake,flat,warm,L3s,query,,q09,1,2.6485,2.5532,2.7513
+lake,flat,warm,L3s,query,,q10,1,3.0122,2.7380,3.3646
+lake,flat,warm,L3s,window,1week,,2,2.8245,2.6803,2.9937
+lake,flat,warm,L3s,all,,,2,2.8245,2.6803,2.9937
